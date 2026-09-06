@@ -624,10 +624,17 @@ tbody tr:last-child td {
   display: none;
 }
 
+@page {
+  size: A4 portrait;
+  margin: 14mm 12mm;
+}
+
 @media print {
   body {
     background: #fff;
     color: #000;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
   }
   body::before,
   body::after {
@@ -655,28 +662,133 @@ tbody tr:last-child td {
   .step {
     animation: none;
   }
-  h1,
-  h2 {
-    color: #000;
-  }
-  table {
-    font-size: 11px;
-  }
-  th,
-  td {
-    border-bottom: 1px solid #999;
-    padding: 6px 8px;
-    color: #000;
-  }
-  .pill {
-    border: 1px solid #999;
-    color: #000;
-  }
-  .pill::before {
-    display: none;
-  }
   a {
     color: #000;
     text-decoration: none;
+  }
+
+  /* -------- official Team ACE On-Duty form -------- */
+  .od-sheet {
+    font-family: "Times New Roman", Times, serif;
+    color: #000;
+    line-height: 1.35;
+  }
+  .od-sheet + .od-sheet {
+    page-break-before: always;
+  }
+
+  .od-head {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    margin-bottom: 2px;
+  }
+  .od-vit {
+    width: 82px;
+    height: auto;
+  }
+  .od-ace {
+    width: 140px;
+    height: auto;
+    margin-top: 18px;
+  }
+
+  .od-title {
+    text-align: center;
+    font-size: 25px;
+    font-weight: 700;
+    margin: 0;
+  }
+  .od-subtitle {
+    text-align: center;
+    font-style: italic;
+    font-size: 12px;
+    margin: 0 0 16px;
+  }
+
+  .od-refs {
+    font-size: 12px;
+    margin: 0 0 10px;
+    padding-left: 96px;
+  }
+  .od-refs p {
+    margin: 3px 0;
+  }
+  .od-fill {
+    display: inline-block;
+    min-width: 240px;
+    border-bottom: 1px solid #000;
+    vertical-align: bottom;
+  }
+  .od-fill-sm {
+    min-width: 150px;
+  }
+
+  .od-table,
+  .od-details {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 12px;
+  }
+  .od-table th,
+  .od-table td,
+  .od-details td {
+    border: 1px solid #000;
+    padding: 6px 8px;
+    text-align: left;
+    vertical-align: top;
+    color: #000;
+  }
+  .od-table th {
+    font-weight: 400;
+  }
+  .od-table tbody td {
+    height: 32px;
+  }
+  .od-table .od-sr {
+    width: 44px;
+    text-align: left;
+  }
+
+  .od-h {
+    font-weight: 700;
+    font-size: 13px;
+    margin: 18px 0 8px;
+  }
+
+  .od-details td {
+    height: 30px;
+  }
+  .od-details .od-lbl {
+    width: 190px;
+    background: #d9d9d9;
+    font-size: 10.5px;
+    letter-spacing: 0.02em;
+  }
+
+  .od-sign {
+    display: flex;
+    justify-content: space-between;
+    gap: 48px;
+    margin-top: 52px;
+    font-size: 12px;
+    page-break-inside: avoid;
+  }
+  .od-sign > div {
+    flex: 1;
+    max-width: 280px;
+  }
+  .od-sigline {
+    border-top: 1px solid #000;
+    height: 0;
+    margin-bottom: 5px;
+  }
+  .od-sign p {
+    margin: 2px 0;
+  }
+
+  .od-h,
+  .od-details {
+    page-break-inside: avoid;
   }
 }

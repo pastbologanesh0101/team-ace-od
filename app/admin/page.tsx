@@ -108,7 +108,7 @@ export default async function AdminPage({
         <span className="pill rejected">{counts.rejected} rejected</span>
       </div>
 
-      <AdminTable entries={entries} weekLabel={heading} />
+      <AdminTable entries={entries} />
 
       <div className="no-print">
         <ResetPin roster={roster} />
