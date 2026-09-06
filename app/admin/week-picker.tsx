@@ -29,6 +29,7 @@ export default function WeekPicker({
           value={current}
           onChange={(e) => go({ week: e.target.value })}
         >
+          <option value="all">All weeks</option>
           {weeks.map((w) => (
             <option key={w.key} value={w.key}>
               {w.label}

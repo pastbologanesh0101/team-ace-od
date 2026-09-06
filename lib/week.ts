@@ -47,13 +47,17 @@ export function weekLabel(weekKey: string): string {
   return `${fmt(s)} – ${fmt(e)} ${e.getFullYear()}`;
 }
 
-/** The last `n` week keys, most recent first. */
-export function recentWeekKeys(n: number): string[] {
+/**
+ * Week keys from `back` weeks ago to `forward` weeks ahead, in
+ * chronological order. OD entries are usually for upcoming dates, so
+ * the window must reach into the future.
+ */
+export function weekKeyWindow(back: number, forward: number): string[] {
   const keys: string[] = [];
   const monday = mondayOf(new Date());
-  for (let i = 0; i < n; i++) {
+  for (let i = -back; i <= forward; i++) {
     const d = new Date(monday);
-    d.setDate(d.getDate() - 7 * i);
+    d.setDate(d.getDate() + 7 * i);
     keys.push(ymd(d));
   }
   return keys;

@@ -132,7 +132,7 @@ export default function AdminTable({
       {/* -------- print: approved submission sheet -------- */}
       <div className="print-only">
         <h2>Team ACE — Approved OD list</h2>
-        <p>Week: {weekLabel}</p>
+        <p>{weekLabel}</p>
         <p>Total approved: {approved.length}</p>
         <table>
           <thead>
