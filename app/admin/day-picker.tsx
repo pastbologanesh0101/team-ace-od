@@ -2,20 +2,20 @@
 
 import { useRouter } from "next/navigation";
 
-export default function WeekPicker({
-  weeks,
+export default function DayPicker({
+  days,
   current,
   status,
 }: {
-  weeks: { key: string; label: string }[];
+  days: { key: string; label: string }[];
   current: string;
   status: string;
 }) {
   const router = useRouter();
 
-  function go(next: { week?: string; status?: string }) {
+  function go(next: { day?: string; status?: string }) {
     const params = new URLSearchParams();
-    params.set("week", next.week ?? current);
+    params.set("day", next.day ?? current);
     params.set("status", next.status ?? status);
     router.push(`/admin?${params.toString()}`);
   }
@@ -23,16 +23,16 @@ export default function WeekPicker({
   return (
     <div className="toolbar">
       <div className="field">
-        <label htmlFor="week">Week</label>
+        <label htmlFor="day">Day</label>
         <select
-          id="week"
+          id="day"
           value={current}
-          onChange={(e) => go({ week: e.target.value })}
+          onChange={(e) => go({ day: e.target.value })}
         >
-          <option value="all">All weeks</option>
-          {weeks.map((w) => (
-            <option key={w.key} value={w.key}>
-              {w.label}
+          <option value="all">All days</option>
+          {days.map((d) => (
+            <option key={d.key} value={d.key}>
+              {d.label}
             </option>
           ))}
         </select>

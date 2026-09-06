@@ -2,43 +2,65 @@ import { redirect } from "next/navigation";
 import { currentSession } from "@/lib/auth";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { MEMBERS } from "@/lib/members";
-import { weekKeyWindow, weekLabel, weekRange } from "@/lib/week";
 import AdminTable, { type AdminEntry } from "./admin-table";
-import WeekPicker from "./week-picker";
+import DayPicker from "./day-picker";
 import ResetPin from "./reset-pin";
 
 export const dynamic = "force-dynamic";
 
+function fmtFullDate(d: string) {
+  return new Date(d + "T00:00:00").toLocaleDateString("en-GB", {
+    weekday: "long",
+    day: "numeric",
+    month: "long",
+    year: "numeric",
+  });
+}
+function fmtDayOption(d: string) {
+  return new Date(d + "T00:00:00").toLocaleDateString("en-GB", {
+    weekday: "short",
+    day: "numeric",
+    month: "short",
+    year: "numeric",
+  });
+}
+
 export default async function AdminPage({
   searchParams,
 }: {
-  searchParams: Promise<{ week?: string; status?: string }>;
+  searchParams: Promise<{ day?: string; status?: string }>;
 }) {
   const session = await currentSession();
   if (!session) redirect("/");
   if (session.role !== "admin") redirect("/dashboard");
 
   const sp = await searchParams;
-  const weekKey = sp.week ?? "all"; // default: show everything
+  const day = sp.day ?? "all"; // default: every day
   const statusFilter = sp.status ?? "all";
 
   const db = createAdminClient();
+
+  // every distinct OD date, newest first, for the day dropdown
+  const { data: dateRows } = await db
+    .from("od_entries")
+    .select("od_date")
+    .order("od_date", { ascending: false });
+  const days = Array.from(new Set((dateRows ?? []).map((r) => r.od_date))).map(
+    (d) => ({ key: d, label: fmtDayOption(d) }),
+  );
+
   let query = db
     .from("od_entries")
     .select("*")
     .order("od_date", { ascending: true })
     .order("name", { ascending: true });
 
-  if (weekKey !== "all") {
-    const { start, end } = weekRange(weekKey);
-    query = query.gte("od_date", start).lte("od_date", end);
-  }
+  if (day !== "all") query = query.eq("od_date", day);
   if (statusFilter !== "all") query = query.eq("status", statusFilter);
 
   const { data } = await query;
   const entries = (data ?? []) as AdminEntry[];
 
-  // grand total (all weeks, all statuses) for the "more elsewhere" hint
   const { count: grandTotal } = await db
     .from("od_entries")
     .select("id", { count: "exact", head: true });
@@ -58,9 +80,9 @@ export default async function AdminPage({
     rejected: entries.filter((e) => e.status === "rejected").length,
   };
 
-  const heading = weekKey === "all" ? "All OD entries" : `Week of ${weekLabel(weekKey)}`;
+  const heading = day === "all" ? "All OD entries" : fmtFullDate(day);
   const elsewhere =
-    weekKey !== "all" && statusFilter === "all" && (grandTotal ?? 0) > counts.total
+    day !== "all" && statusFilter === "all" && (grandTotal ?? 0) > counts.total
       ? (grandTotal ?? 0) - counts.total
       : 0;
 
@@ -80,21 +102,17 @@ export default async function AdminPage({
       <h1 className="no-print">{heading}</h1>
       <p className="sub no-print">
         Approve or reject each entry, then use <b>Print / Save PDF</b> for the
-        list to submit. The printed sheet shows approved entries only
-        {weekKey === "all" ? "" : " for the selected week"}.
+        list to submit. The printed form fills in approved entries only
+        {day === "all" ? "" : " for the selected day"}.
       </p>
 
       <div className="no-print">
-        <WeekPicker
-          weeks={weekKeyWindow(8, 16).map((k) => ({ key: k, label: weekLabel(k) }))}
-          current={weekKey}
-          status={statusFilter}
-        />
+        <DayPicker days={days} current={day} status={statusFilter} />
         {elsewhere > 0 && (
           <p className="msg muted">
             {elsewhere} more{" "}
-            {elsewhere === 1 ? "entry is" : "entries are"} in other weeks — pick{" "}
-            <b>All weeks</b> to see everything.
+            {elsewhere === 1 ? "entry is" : "entries are"} on other days — pick{" "}
+            <b>All days</b> to see everything.
           </p>
         )}
       </div>
