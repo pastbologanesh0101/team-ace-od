@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation";
-import { currentRole } from "@/lib/auth";
+import { currentSession } from "@/lib/auth";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { MEMBERS } from "@/lib/members";
 import {
   currentWeekKey,
   recentWeekKeys,
@@ -9,6 +10,7 @@ import {
 } from "@/lib/week";
 import AdminTable, { type AdminEntry } from "./admin-table";
 import WeekPicker from "./week-picker";
+import ResetPin from "./reset-pin";
 
 export const dynamic = "force-dynamic";
 
@@ -17,9 +19,9 @@ export default async function AdminPage({
 }: {
   searchParams: Promise<{ week?: string; status?: string }>;
 }) {
-  const role = await currentRole();
-  if (!role) redirect("/");
-  if (role !== "admin") redirect("/dashboard");
+  const session = await currentSession();
+  if (!session) redirect("/");
+  if (session.role !== "admin") redirect("/dashboard");
 
   const sp = await searchParams;
   const weekKey = sp.week ?? currentWeekKey();
@@ -39,6 +41,14 @@ export default async function AdminPage({
 
   const { data } = await query;
   const entries = (data ?? []) as AdminEntry[];
+
+  const { data: pinRows } = await db.from("member_pins").select("reg_no");
+  const withPin = new Set((pinRows ?? []).map((r) => r.reg_no));
+  const roster = MEMBERS.map((m) => ({
+    name: m.name,
+    regNo: m.regNo,
+    hasPin: withPin.has(m.regNo),
+  }));
 
   const counts = {
     total: entries.length,
@@ -84,6 +94,10 @@ export default async function AdminPage({
       </div>
 
       <AdminTable entries={entries} weekLabel={weekLabel(weekKey)} />
+
+      <div className="no-print">
+        <ResetPin roster={roster} />
+      </div>
     </div>
   );
 }

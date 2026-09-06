@@ -1,13 +1,13 @@
 import { redirect } from "next/navigation";
-import { currentRole } from "@/lib/auth";
-import PasscodeForm from "./passcode-form";
+import { currentSession } from "@/lib/auth";
+import LoginForm from "./login-form";
 
 export const dynamic = "force-dynamic";
 
 export default async function Home() {
-  const role = await currentRole();
-  if (role === "admin") redirect("/admin");
-  if (role === "member") redirect("/dashboard");
+  const session = await currentSession();
+  if (session?.role === "admin") redirect("/admin");
+  if (session?.role === "member") redirect("/dashboard");
 
   return (
     <div className="wrap">
@@ -17,13 +17,13 @@ export default async function Home() {
         </div>
       </div>
 
-      <h1>Enter passcode</h1>
+      <h1>Sign in</h1>
       <p className="sub">
-        Use the <b>team passcode</b> shared by the management head. Admins enter
-        the admin passcode instead. It&apos;s remembered on this device.
+        Log in with your <b>registration number</b> and a personal PIN. You can
+        only file OD for yourself.
       </p>
 
-      <PasscodeForm />
+      <LoginForm />
     </div>
   );
 }

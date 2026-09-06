@@ -1,14 +1,14 @@
 import { redirect } from "next/navigation";
-import { currentRole } from "@/lib/auth";
+import { currentSession } from "@/lib/auth";
 import { weekLabel, currentWeekKey } from "@/lib/week";
 import MemberPanel from "./member-panel";
 
 export const dynamic = "force-dynamic";
 
 export default async function Dashboard() {
-  const role = await currentRole();
-  if (!role) redirect("/");
-  if (role === "admin") redirect("/admin");
+  const session = await currentSession();
+  if (!session) redirect("/");
+  if (session.role === "admin") redirect("/admin");
 
   return (
     <div className="wrap">
@@ -25,9 +25,9 @@ export default async function Dashboard() {
 
       <h1>New OD entry</h1>
       <p className="sub">
-        Current week: <b>{weekLabel(currentWeekKey())}</b>. Once you submit an
-        entry you can&apos;t edit it — message the management head if something is
-        wrong.
+        {session.name} · {session.regNo} &nbsp;·&nbsp; current week:{" "}
+        <b>{weekLabel(currentWeekKey())}</b>. Once you submit an entry you can&apos;t
+        edit it — message the management head if something is wrong.
       </p>
 
       <MemberPanel />

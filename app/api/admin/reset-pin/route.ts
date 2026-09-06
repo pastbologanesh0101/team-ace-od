@@ -1,7 +1,9 @@
 import { NextResponse } from "next/server";
 import { currentSession } from "@/lib/auth";
+import { memberByReg } from "@/lib/members";
 import { createAdminClient } from "@/lib/supabase/admin";
 
+/** Admin clears a member's PIN — they set a new one on next login. */
 export async function POST(request: Request) {
   const session = await currentSession();
   if (session?.role !== "admin") {
@@ -15,21 +17,16 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Bad request." }, { status: 400 });
   }
 
-  const id = String(body.id ?? "");
-  const status = String(body.status ?? "");
-
-  if (!id || !["approved", "rejected", "pending"].includes(status)) {
-    return NextResponse.json({ error: "Bad request." }, { status: 400 });
+  const member = memberByReg(String(body.regNo ?? ""));
+  if (!member) {
+    return NextResponse.json({ error: "Unknown member." }, { status: 400 });
   }
 
   const db = createAdminClient();
   const { error } = await db
-    .from("od_entries")
-    .update({
-      status,
-      reviewed_at: status === "pending" ? null : new Date().toISOString(),
-    })
-    .eq("id", id);
+    .from("member_pins")
+    .delete()
+    .eq("reg_no", member.regNo);
 
   if (error) {
     return NextResponse.json({ error: error.message }, { status: 500 });

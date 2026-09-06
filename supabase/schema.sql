@@ -1,16 +1,24 @@
 -- ============================================================
--- Team ACE — OD Tracker schema  (passcode model, no Supabase Auth)
+-- Team ACE — OD Tracker schema
+-- Login = registration number + personal PIN. No email / Supabase Auth.
 -- Paste into: Supabase dashboard -> SQL Editor -> New query -> Run
--- Safe to re-run: it drops and recreates the table.
+-- Safe to re-run: it drops and recreates both tables.
 -- ============================================================
 
 drop table if exists public.od_entries cascade;
+drop table if exists public.member_pins cascade;
+
+-- One PIN per member (set on first login, resettable by admin).
+create table public.member_pins (
+  reg_no     text primary key,
+  pin_hash   text not null,           -- scrypt: "<saltHex>:<hashHex>"
+  updated_at timestamptz not null default now()
+);
 
 create table public.od_entries (
   id          uuid primary key default gen_random_uuid(),
-  device_id   text,                       -- random id from the member's browser
+  reg_no      text not null,          -- taken from the session, not the form
   name        text not null,
-  reg_no      text not null,
   od_date     date not null,
   from_time   time not null,
   to_time     time not null,
@@ -22,9 +30,9 @@ create table public.od_entries (
 );
 
 create index od_entries_od_date_idx on public.od_entries (od_date);
-create index od_entries_device_idx  on public.od_entries (device_id);
+create index od_entries_reg_no_idx  on public.od_entries (reg_no);
 
--- Lock the table to server-side access only. The app talks to the DB
--- with the Supabase SECRET key (bypasses RLS); the publishable key
--- gets nothing. No policies = anon/publishable key is fully denied.
-alter table public.od_entries enable row level security;
+-- Server-side access only. The app uses the Supabase SECRET key
+-- (bypasses RLS); the publishable key is fully denied (no policies).
+alter table public.od_entries  enable row level security;
+alter table public.member_pins enable row level security;

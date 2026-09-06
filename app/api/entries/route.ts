@@ -1,28 +1,25 @@
 import { NextResponse } from "next/server";
-import { currentRole } from "@/lib/auth";
+import { currentSession } from "@/lib/auth";
 import { createAdminClient } from "@/lib/supabase/admin";
 
 const TIME_RE = /^([01]\d|2[0-3]):[0-5]\d$/;
 const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
 
-/** A member's own submissions from this device. */
-export async function GET(request: Request) {
-  const role = await currentRole();
-  if (!role) {
+/** The signed-in member's own entries. */
+export async function GET() {
+  const session = await currentSession();
+  if (session?.role !== "member") {
     return NextResponse.json({ error: "Not signed in." }, { status: 401 });
   }
-
-  const device = new URL(request.url).searchParams.get("device") ?? "";
-  if (!device) return NextResponse.json({ entries: [] });
 
   const db = createAdminClient();
   const { data, error } = await db
     .from("od_entries")
     .select("id,name,reg_no,od_date,from_time,to_time,reason,status,created_at")
-    .eq("device_id", device)
+    .eq("reg_no", session.regNo)
     .order("od_date", { ascending: false })
     .order("created_at", { ascending: false })
-    .limit(100);
+    .limit(200);
 
   if (error) {
     return NextResponse.json({ error: error.message }, { status: 500 });
@@ -30,10 +27,10 @@ export async function GET(request: Request) {
   return NextResponse.json({ entries: data ?? [] });
 }
 
-/** Create a new OD entry. */
+/** Create an OD entry for the signed-in member. */
 export async function POST(request: Request) {
-  const role = await currentRole();
-  if (!role) {
+  const session = await currentSession();
+  if (session?.role !== "member") {
     return NextResponse.json({ error: "Not signed in." }, { status: 401 });
   }
 
@@ -44,19 +41,13 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Bad request." }, { status: 400 });
   }
 
-  const device_id = String(body.device_id ?? "").slice(0, 64) || null;
-  const name = String(body.name ?? "").trim();
-  const reg_no = String(body.reg_no ?? "").trim().toUpperCase();
   const od_date = String(body.od_date ?? "").trim();
   const from_time = String(body.from_time ?? "").trim();
   const to_time = String(body.to_time ?? "").trim();
   const reason = String(body.reason ?? "").trim();
 
-  if (!name || !reg_no || !reason) {
-    return NextResponse.json(
-      { error: "Name, registration number and reason are required." },
-      { status: 400 },
-    );
+  if (!reason) {
+    return NextResponse.json({ error: "Reason is required." }, { status: 400 });
   }
   if (!DATE_RE.test(od_date)) {
     return NextResponse.json({ error: "Invalid date." }, { status: 400 });
@@ -70,18 +61,14 @@ export async function POST(request: Request) {
       { status: 400 },
     );
   }
-  if (name.length > 120 || reg_no.length > 30 || reason.length > 500) {
-    return NextResponse.json(
-      { error: "One of the fields is too long." },
-      { status: 400 },
-    );
+  if (reason.length > 500) {
+    return NextResponse.json({ error: "Reason is too long." }, { status: 400 });
   }
 
   const db = createAdminClient();
   const { error } = await db.from("od_entries").insert({
-    device_id,
-    name,
-    reg_no,
+    reg_no: session.regNo,
+    name: session.name,
     od_date,
     from_time,
     to_time,

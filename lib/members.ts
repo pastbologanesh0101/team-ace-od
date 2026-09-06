@@ -1,7 +1,7 @@
 /**
- * Team ACE roster. Members pick their name here and the reg number is
- * filled in for them. To add / remove someone: edit this list and push
- * (Vercel redeploys automatically).
+ * Team ACE roster. Members log in with their registration number; the
+ * name is looked up here. To add / remove someone: edit this list and
+ * push (Vercel redeploys automatically).
  */
 export type Member = { name: string; regNo: string };
 
@@ -26,3 +26,12 @@ export const MEMBERS: Member[] = [
   { name: "VISHWANATHAN TAMIZHARASAN", regNo: "25BCE2885" },
   { name: "YUVRAJ SINGH JAKHAR", regNo: "25BCE2259" },
 ];
+
+export function normalizeReg(input: string): string {
+  return input.trim().toUpperCase().replace(/\s+/g, "");
+}
+
+export function memberByReg(input: string): Member | undefined {
+  const reg = normalizeReg(input);
+  return MEMBERS.find((m) => m.regNo === reg);
+}
