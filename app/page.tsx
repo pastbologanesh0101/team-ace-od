@@ -23,8 +23,8 @@ export default async function Home() {
 
       <h1>Sign in</h1>
       <p className="sub">
-        Enter your email and we&apos;ll send you a one-tap sign-in link. Use the
-        email you want your OD records tied to.
+        Enter your email, we&apos;ll send a 6-digit code, you type it back in.
+        Use the email you want your OD records tied to.
       </p>
 
       <SignIn />

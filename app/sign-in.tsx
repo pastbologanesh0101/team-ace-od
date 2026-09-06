@@ -4,47 +4,100 @@ import { useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 
 export default function SignIn() {
+  const [step, setStep] = useState<"email" | "code">("email");
   const [email, setEmail] = useState("");
-  const [status, setStatus] = useState<"idle" | "sending" | "sent" | "error">(
-    "idle",
-  );
+  const [code, setCode] = useState("");
+  const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
+  const [info, setInfo] = useState("");
 
-  async function submit(e: React.FormEvent) {
+  const supabase = createClient();
+
+  async function sendCode(e: React.FormEvent) {
     e.preventDefault();
-    setStatus("sending");
+    setBusy(true);
     setError("");
-
-    const supabase = createClient();
-    const siteUrl =
-      process.env.NEXT_PUBLIC_SITE_URL ?? window.location.origin;
+    setInfo("");
 
     const { error } = await supabase.auth.signInWithOtp({
-      email: email.trim(),
-      options: { emailRedirectTo: `${siteUrl}/auth/callback` },
+      email: email.trim().toLowerCase(),
+      options: { shouldCreateUser: true },
     });
 
+    setBusy(false);
     if (error) {
-      setStatus("error");
       setError(error.message);
     } else {
-      setStatus("sent");
+      setStep("code");
+      setInfo(`We emailed a 6-digit code to ${email.trim().toLowerCase()}.`);
     }
   }
 
-  if (status === "sent") {
+  async function verify(e: React.FormEvent) {
+    e.preventDefault();
+    setBusy(true);
+    setError("");
+
+    const { error } = await supabase.auth.verifyOtp({
+      email: email.trim().toLowerCase(),
+      token: code.trim(),
+      type: "email",
+    });
+
+    if (error) {
+      setBusy(false);
+      setError(error.message);
+      return;
+    }
+
+    // Session cookie is set — hard-navigate so the server routes us to
+    // /admin or /dashboard.
+    window.location.href = "/";
+  }
+
+  if (step === "code") {
     return (
-      <div className="card">
-        <p>
-          Check <b>{email}</b> for a sign-in link. It opens this site and logs
-          you in — you can close this tab.
-        </p>
-      </div>
+      <form className="card" onSubmit={verify}>
+        {info && <p className="msg ok" style={{ marginTop: 0 }}>{info}</p>}
+        <div className="field">
+          <label htmlFor="code">6-digit code</label>
+          <input
+            id="code"
+            inputMode="numeric"
+            autoComplete="one-time-code"
+            pattern="[0-9]*"
+            maxLength={6}
+            required
+            placeholder="123456"
+            value={code}
+            onChange={(e) => setCode(e.target.value.replace(/\D/g, ""))}
+            style={{ letterSpacing: "0.3em", fontSize: "1.1rem" }}
+          />
+        </div>
+        <button className="btn primary" type="submit" disabled={busy || code.length !== 6}>
+          {busy ? "Verifying…" : "Verify & sign in"}
+        </button>
+        <button
+          type="button"
+          className="btn ghost sm"
+          style={{ marginLeft: 10 }}
+          disabled={busy}
+          onClick={() => {
+            setStep("email");
+            setCode("");
+            setError("");
+            setInfo("");
+          }}
+        >
+          Use a different email
+        </button>
+        {error && <p className="msg err">{error}</p>}
+      </form>
     );
   }
 
   return (
-    <form className="card" onSubmit={submit}>
+    <form className="card" onSubmit={sendCode}>
       <div className="field">
         <label htmlFor="email">Email</label>
         <input
@@ -57,14 +110,10 @@ export default function SignIn() {
           onChange={(e) => setEmail(e.target.value)}
         />
       </div>
-      <button
-        className="btn primary"
-        type="submit"
-        disabled={status === "sending"}
-      >
-        {status === "sending" ? "Sending…" : "Send sign-in link"}
+      <button className="btn primary" type="submit" disabled={busy}>
+        {busy ? "Sending…" : "Email me a code"}
       </button>
-      {status === "error" && <p className="msg err">{error}</p>}
+      {error && <p className="msg err">{error}</p>}
     </form>
   );
 }
