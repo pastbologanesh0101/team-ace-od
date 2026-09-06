@@ -77,7 +77,7 @@ export default async function AdminPage({
         </form>
       </div>
 
-      <h1>{heading}</h1>
+      <h1 className="no-print">{heading}</h1>
       <p className="sub no-print">
         Approve or reject each entry, then use <b>Print / Save PDF</b> for the
         list to submit. The printed sheet shows approved entries only
@@ -99,7 +99,7 @@ export default async function AdminPage({
         )}
       </div>
 
-      <div className="count-strip">
+      <div className="count-strip no-print">
         <span>
           <b>{counts.total}</b> shown
         </span>
