@@ -81,18 +81,15 @@ export default function MemberPanel() {
   return (
     <>
       <form className="card" onSubmit={submit}>
-        <div className="grid2">
-          <div className="field">
-            <label htmlFor="od_date">Date</label>
-            <input
-              id="od_date"
-              type="date"
-              required
-              value={entry.od_date}
-              onChange={(e) => set("od_date", e.target.value)}
-            />
-          </div>
-          <div />
+        <div className="field">
+          <label htmlFor="od_date">Date</label>
+          <input
+            id="od_date"
+            type="date"
+            required
+            value={entry.od_date}
+            onChange={(e) => set("od_date", e.target.value)}
+          />
         </div>
 
         <div className="grid2">
