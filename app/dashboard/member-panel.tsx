@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import { MEMBERS } from "@/lib/members";
 
 type Entry = {
   id: string;
@@ -13,6 +14,8 @@ type Entry = {
   status: "pending" | "approved" | "rejected";
   created_at: string;
 };
+
+type Identity = { name: string; reg_no: string };
 
 function todayYmd() {
   const d = new Date();
@@ -44,9 +47,8 @@ function getDeviceId(): string {
   }
 }
 
-const EMPTY = {
-  name: "",
-  reg_no: "",
+const NOT_LISTED = "__other__";
+const EMPTY_ENTRY = {
   od_date: todayYmd(),
   from_time: "",
   to_time: "",
@@ -55,49 +57,88 @@ const EMPTY = {
 
 export default function MemberPanel() {
   const [deviceId, setDeviceId] = useState("");
-  const [form, setForm] = useState(EMPTY);
+  const [identity, setIdentity] = useState<Identity | null>(null);
+  const [ready, setReady] = useState(false);
+
+  // identity picker state
+  const [pick, setPick] = useState("");
+  const [otherName, setOtherName] = useState("");
+  const [otherReg, setOtherReg] = useState("");
+
+  // entry form state
+  const [entry, setEntry] = useState(EMPTY_ENTRY);
   const [entries, setEntries] = useState<Entry[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [loadingList, setLoadingList] = useState(true);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const [ok, setOk] = useState("");
 
-  const load = useCallback(async (device: string) => {
+  const loadList = useCallback(async (device: string) => {
     if (!device) return;
     const res = await fetch(`/api/entries?device=${encodeURIComponent(device)}`);
-    if (res.ok) {
-      const body = await res.json();
-      setEntries(body.entries ?? []);
-    }
-    setLoading(false);
+    if (res.ok) setEntries((await res.json()).entries ?? []);
+    setLoadingList(false);
   }, []);
 
   useEffect(() => {
     const id = getDeviceId();
     setDeviceId(id);
-    let profile = { name: "", reg_no: "" };
     try {
-      profile = JSON.parse(localStorage.getItem("ace_profile") ?? "{}");
+      const saved = JSON.parse(localStorage.getItem("ace_identity") ?? "null");
+      if (saved?.name && saved?.reg_no) setIdentity(saved);
     } catch {
       /* ignore */
     }
-    setForm((f) => ({
-      ...f,
-      name: profile.name ?? "",
-      reg_no: profile.reg_no ?? "",
-    }));
-    load(id);
-  }, [load]);
+    setReady(true);
+    loadList(id);
+  }, [loadList]);
 
-  function set<K extends keyof typeof form>(k: K, v: string) {
-    setForm((f) => ({ ...f, [k]: v }));
+  function confirmIdentity(e: React.FormEvent) {
+    e.preventDefault();
+    setError("");
+    let next: Identity | null = null;
+    if (pick === NOT_LISTED) {
+      if (!otherName.trim() || !otherReg.trim()) {
+        setError("Enter your name and registration number.");
+        return;
+      }
+      next = {
+        name: otherName.trim().toUpperCase(),
+        reg_no: otherReg.trim().toUpperCase(),
+      };
+    } else {
+      const m = MEMBERS.find((x) => x.name === pick);
+      if (!m) {
+        setError("Pick your name from the list.");
+        return;
+      }
+      next = { name: m.name, reg_no: m.regNo };
+    }
+    try {
+      localStorage.setItem("ace_identity", JSON.stringify(next));
+    } catch {
+      /* ignore */
+    }
+    setIdentity(next);
+  }
+
+  function changeIdentity() {
+    setIdentity(null);
+    setPick("");
+    setOtherName("");
+    setOtherReg("");
+  }
+
+  function setField<K extends keyof typeof entry>(k: K, v: string) {
+    setEntry((f) => ({ ...f, [k]: v }));
   }
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
+    if (!identity) return;
     setError("");
     setOk("");
-    if (form.to_time <= form.from_time) {
+    if (entry.to_time <= entry.from_time) {
       setError("“To time” must be after “From time”.");
       return;
     }
@@ -106,7 +147,12 @@ export default function MemberPanel() {
     const res = await fetch("/api/entries", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ ...form, device_id: deviceId }),
+      body: JSON.stringify({
+        name: identity.name,
+        reg_no: identity.reg_no,
+        device_id: deviceId,
+        ...entry,
+      }),
     });
     setBusy(false);
 
@@ -116,51 +162,84 @@ export default function MemberPanel() {
       return;
     }
 
-    try {
-      localStorage.setItem(
-        "ace_profile",
-        JSON.stringify({ name: form.name, reg_no: form.reg_no }),
-      );
-    } catch {
-      /* ignore */
-    }
-
-    setForm((f) => ({
-      ...f,
-      from_time: "",
-      to_time: "",
-      reason: "",
-      od_date: todayYmd(),
-    }));
+    setEntry({ ...EMPTY_ENTRY, od_date: todayYmd() });
     setOk("Entry submitted. It's now pending review.");
-    load(deviceId);
+    loadList(deviceId);
   }
 
-  return (
-    <>
-      <form className="card" onSubmit={submit}>
-        <div className="grid2">
-          <div className="field">
-            <label htmlFor="name">Name</label>
-            <input
-              id="name"
-              required
-              value={form.name}
-              onChange={(e) => set("name", e.target.value)}
-            />
-          </div>
-          <div className="field">
-            <label htmlFor="reg_no">Registration number</label>
-            <input
-              id="reg_no"
-              required
-              placeholder="21BCE1234"
-              value={form.reg_no}
-              onChange={(e) => set("reg_no", e.target.value.toUpperCase())}
-            />
-          </div>
+  if (!ready) return <p className="empty">Loading…</p>;
+
+  // ---------- identity step ----------
+  if (!identity) {
+    return (
+      <form className="card" onSubmit={confirmIdentity}>
+        <div className="field">
+          <label htmlFor="pick">Who are you?</label>
+          <select
+            id="pick"
+            required
+            value={pick}
+            onChange={(e) => setPick(e.target.value)}
+          >
+            <option value="" disabled>
+              Select your name…
+            </option>
+            {MEMBERS.map((m) => (
+              <option key={m.regNo} value={m.name}>
+                {m.name} · {m.regNo}
+              </option>
+            ))}
+            <option value={NOT_LISTED}>My name isn&apos;t listed</option>
+          </select>
         </div>
 
+        {pick === NOT_LISTED && (
+          <div className="grid2">
+            <div className="field">
+              <label htmlFor="otherName">Name</label>
+              <input
+                id="otherName"
+                value={otherName}
+                onChange={(e) => setOtherName(e.target.value)}
+              />
+            </div>
+            <div className="field">
+              <label htmlFor="otherReg">Registration number</label>
+              <input
+                id="otherReg"
+                placeholder="25BCE1234"
+                value={otherReg}
+                onChange={(e) => setOtherReg(e.target.value.toUpperCase())}
+              />
+            </div>
+          </div>
+        )}
+
+        <button className="btn primary" type="submit">
+          Continue
+        </button>
+        {error && <p className="msg err">{error}</p>}
+        <p className="msg muted">Remembered on this device — you won&apos;t pick again here.</p>
+      </form>
+    );
+  }
+
+  // ---------- entry form ----------
+  return (
+    <>
+      <p className="sub" style={{ marginBottom: 16 }}>
+        Submitting as <b>{identity.name}</b> · {identity.reg_no}{" "}
+        <button
+          type="button"
+          className="btn ghost sm"
+          style={{ marginLeft: 8 }}
+          onClick={changeIdentity}
+        >
+          Not you?
+        </button>
+      </p>
+
+      <form className="card" onSubmit={submit}>
         <div className="grid2">
           <div className="field">
             <label htmlFor="od_date">Date</label>
@@ -168,8 +247,8 @@ export default function MemberPanel() {
               id="od_date"
               type="date"
               required
-              value={form.od_date}
-              onChange={(e) => set("od_date", e.target.value)}
+              value={entry.od_date}
+              onChange={(e) => setField("od_date", e.target.value)}
             />
           </div>
           <div />
@@ -182,8 +261,8 @@ export default function MemberPanel() {
               id="from_time"
               type="time"
               required
-              value={form.from_time}
-              onChange={(e) => set("from_time", e.target.value)}
+              value={entry.from_time}
+              onChange={(e) => setField("from_time", e.target.value)}
             />
           </div>
           <div className="field">
@@ -192,8 +271,8 @@ export default function MemberPanel() {
               id="to_time"
               type="time"
               required
-              value={form.to_time}
-              onChange={(e) => set("to_time", e.target.value)}
+              value={entry.to_time}
+              onChange={(e) => setField("to_time", e.target.value)}
             />
           </div>
         </div>
@@ -204,8 +283,8 @@ export default function MemberPanel() {
             id="reason"
             required
             placeholder="What team work is this OD for?"
-            value={form.reason}
-            onChange={(e) => set("reason", e.target.value)}
+            value={entry.reason}
+            onChange={(e) => setField("reason", e.target.value)}
           />
         </div>
 
@@ -217,7 +296,7 @@ export default function MemberPanel() {
       </form>
 
       <h2>Your entries (this device)</h2>
-      {loading ? (
+      {loadingList ? (
         <p className="empty">Loading…</p>
       ) : entries.length === 0 ? (
         <p className="empty">Nothing submitted yet.</p>
