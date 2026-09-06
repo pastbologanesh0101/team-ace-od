@@ -40,10 +40,12 @@ export default async function AdminPage({
 
   const db = createAdminClient();
 
-  // every distinct OD date, newest first, for the day dropdown
+  // Rejected entries are hidden from the admin — only pending + approved.
+  // every distinct OD date (of a visible entry), newest first
   const { data: dateRows } = await db
     .from("od_entries")
     .select("od_date")
+    .neq("status", "rejected")
     .order("od_date", { ascending: false });
   const days = Array.from(new Set((dateRows ?? []).map((r) => r.od_date))).map(
     (d) => ({ key: d, label: fmtDayOption(d) }),
@@ -52,18 +54,22 @@ export default async function AdminPage({
   let query = db
     .from("od_entries")
     .select("*")
+    .neq("status", "rejected")
     .order("od_date", { ascending: true })
     .order("name", { ascending: true });
 
   if (day !== "all") query = query.eq("od_date", day);
-  if (statusFilter !== "all") query = query.eq("status", statusFilter);
+  if (statusFilter === "pending" || statusFilter === "approved") {
+    query = query.eq("status", statusFilter);
+  }
 
   const { data } = await query;
   const entries = (data ?? []) as AdminEntry[];
 
   const { count: grandTotal } = await db
     .from("od_entries")
-    .select("id", { count: "exact", head: true });
+    .select("id", { count: "exact", head: true })
+    .neq("status", "rejected");
 
   const { data: pinRows } = await db.from("member_pins").select("reg_no");
   const withPin = new Set((pinRows ?? []).map((r) => r.reg_no));
@@ -77,7 +83,6 @@ export default async function AdminPage({
     total: entries.length,
     pending: entries.filter((e) => e.status === "pending").length,
     approved: entries.filter((e) => e.status === "approved").length,
-    rejected: entries.filter((e) => e.status === "rejected").length,
   };
 
   const heading = day === "all" ? "All OD entries" : fmtFullDate(day);
@@ -123,7 +128,6 @@ export default async function AdminPage({
         </span>
         <span className="pill pending">{counts.pending} pending</span>
         <span className="pill approved">{counts.approved} approved</span>
-        <span className="pill rejected">{counts.rejected} rejected</span>
       </div>
 
       <AdminTable entries={entries} />

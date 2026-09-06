@@ -48,7 +48,6 @@ export default function DayPicker({
           <option value="all">All</option>
           <option value="pending">Pending</option>
           <option value="approved">Approved</option>
-          <option value="rejected">Rejected</option>
         </select>
       </div>
 

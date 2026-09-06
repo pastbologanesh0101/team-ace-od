@@ -112,7 +112,15 @@ export default function AdminTable({ entries }: { entries: AdminEntry[] }) {
                           <button
                             className="btn bad sm"
                             disabled={busy === e.id}
-                            onClick={() => review(e.id, "rejected")}
+                            onClick={() => {
+                              if (
+                                window.confirm(
+                                  `Reject ${e.name}'s OD? It will be removed from this list.`,
+                                )
+                              ) {
+                                review(e.id, "rejected");
+                              }
+                            }}
                           >
                             Reject
                           </button>
