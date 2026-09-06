@@ -65,7 +65,7 @@ export default async function AdminPage({
       : 0;
 
   return (
-    <div className="wrap">
+    <div className="wrap wide">
       <div className="topbar no-print">
         <div className="brand">
           Team <span>ACE</span> · OD Admin

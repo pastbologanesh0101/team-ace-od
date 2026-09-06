@@ -87,6 +87,9 @@ a:hover {
   margin: 0 auto;
   padding: 52px 22px 96px;
 }
+.wrap.wide {
+  max-width: 1180px;
+}
 
 /* ---------- header ---------- */
 .topbar {
@@ -308,7 +311,7 @@ table {
 th,
 td {
   text-align: left;
-  padding: 12px 14px;
+  padding: 11px 12px;
   vertical-align: top;
 }
 th {
@@ -318,9 +321,13 @@ th {
   text-transform: uppercase;
   letter-spacing: 0.09em;
   border-bottom: 1px solid var(--border-bright);
+  white-space: nowrap;
 }
 td {
   border-bottom: 1px solid var(--border);
+}
+td:last-child {
+  white-space: nowrap;
 }
 tbody tr {
   transition: background-color 0.12s ease;
@@ -371,7 +378,7 @@ tbody tr:last-child td {
 .row-actions {
   display: flex;
   gap: 6px;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
 }
 
 /* ---------- toolbar / counts ---------- */
