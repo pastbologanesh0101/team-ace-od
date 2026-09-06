@@ -14,7 +14,7 @@ export default async function Dashboard() {
     <div className="wrap">
       <div className="topbar">
         <div className="brand">
-          Team <span>ACE</span> · OD Tracker
+          <span>OD</span> Tracker
         </div>
         <form action="/api/logout" method="post">
           <button className="btn ghost sm" type="submit">

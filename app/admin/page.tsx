@@ -90,7 +90,7 @@ export default async function AdminPage({
     <div className="wrap wide">
       <div className="topbar no-print">
         <div className="brand">
-          Team <span>ACE</span> · OD Admin
+          <span>OD</span> Admin
         </div>
         <form action="/api/logout" method="post">
           <button className="btn ghost sm" type="submit">
