@@ -1,16 +1,39 @@
 import { NextResponse } from "next/server";
-import { createClient } from "@/lib/supabase/server";
+import { currentRole } from "@/lib/auth";
+import { createAdminClient } from "@/lib/supabase/admin";
 
 const TIME_RE = /^([01]\d|2[0-3]):[0-5]\d$/;
 const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
 
-export async function POST(request: Request) {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+/** A member's own submissions from this device. */
+export async function GET(request: Request) {
+  const role = await currentRole();
+  if (!role) {
+    return NextResponse.json({ error: "Not signed in." }, { status: 401 });
+  }
 
-  if (!user) {
+  const device = new URL(request.url).searchParams.get("device") ?? "";
+  if (!device) return NextResponse.json({ entries: [] });
+
+  const db = createAdminClient();
+  const { data, error } = await db
+    .from("od_entries")
+    .select("id,name,reg_no,od_date,from_time,to_time,reason,status,created_at")
+    .eq("device_id", device)
+    .order("od_date", { ascending: false })
+    .order("created_at", { ascending: false })
+    .limit(100);
+
+  if (error) {
+    return NextResponse.json({ error: error.message }, { status: 500 });
+  }
+  return NextResponse.json({ entries: data ?? [] });
+}
+
+/** Create a new OD entry. */
+export async function POST(request: Request) {
+  const role = await currentRole();
+  if (!role) {
     return NextResponse.json({ error: "Not signed in." }, { status: 401 });
   }
 
@@ -21,6 +44,7 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Bad request." }, { status: 400 });
   }
 
+  const device_id = String(body.device_id ?? "").slice(0, 64) || null;
   const name = String(body.name ?? "").trim();
   const reg_no = String(body.reg_no ?? "").trim().toUpperCase();
   const od_date = String(body.od_date ?? "").trim();
@@ -47,14 +71,15 @@ export async function POST(request: Request) {
     );
   }
   if (name.length > 120 || reg_no.length > 30 || reason.length > 500) {
-    return NextResponse.json({ error: "One of the fields is too long." }, {
-      status: 400,
-    });
+    return NextResponse.json(
+      { error: "One of the fields is too long." },
+      { status: 400 },
+    );
   }
 
-  const { error } = await supabase.from("od_entries").insert({
-    user_id: user.id,
-    email: user.email,
+  const db = createAdminClient();
+  const { error } = await db.from("od_entries").insert({
+    device_id,
     name,
     reg_no,
     od_date,
@@ -66,6 +91,5 @@ export async function POST(request: Request) {
   if (error) {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
-
   return NextResponse.json({ ok: true });
 }

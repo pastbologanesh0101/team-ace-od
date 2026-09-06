@@ -5,7 +5,6 @@ import { useState } from "react";
 
 export type AdminEntry = {
   id: string;
-  email: string;
   name: string;
   reg_no: string;
   od_date: string;
@@ -13,7 +12,7 @@ export type AdminEntry = {
   to_time: string;
   reason: string;
   status: "pending" | "approved" | "rejected";
-  reviewed_by: string | null;
+  reviewed_at: string | null;
   created_at: string;
 };
 

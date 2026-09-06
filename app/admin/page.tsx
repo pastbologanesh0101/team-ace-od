@@ -1,7 +1,6 @@
 import { redirect } from "next/navigation";
-import { createClient } from "@/lib/supabase/server";
+import { currentRole } from "@/lib/auth";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { isAdminEmail } from "@/lib/admin";
 import {
   currentWeekKey,
   recentWeekKeys,
@@ -18,21 +17,17 @@ export default async function AdminPage({
 }: {
   searchParams: Promise<{ week?: string; status?: string }>;
 }) {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
-  if (!user) redirect("/");
-  if (!isAdminEmail(user.email)) redirect("/dashboard");
+  const role = await currentRole();
+  if (!role) redirect("/");
+  if (role !== "admin") redirect("/dashboard");
 
   const sp = await searchParams;
   const weekKey = sp.week ?? currentWeekKey();
   const statusFilter = sp.status ?? "all";
   const { start, end } = weekRange(weekKey);
 
-  const admin = createAdminClient();
-  let query = admin
+  const db = createAdminClient();
+  let query = db
     .from("od_entries")
     .select("*")
     .gte("od_date", start)
@@ -58,14 +53,11 @@ export default async function AdminPage({
         <div className="brand">
           Team <span>ACE</span> · OD Admin
         </div>
-        <div className="muted" style={{ fontSize: "0.85rem" }}>
-          {user.email}
-          <form action="/auth/signout" method="post" style={{ display: "inline" }}>
-            <button className="btn ghost sm" type="submit" style={{ marginLeft: 10 }}>
-              Sign out
-            </button>
-          </form>
-        </div>
+        <form action="/api/logout" method="post">
+          <button className="btn ghost sm" type="submit">
+            Sign out
+          </button>
+        </form>
       </div>
 
       <h1>Week of {weekLabel(weekKey)}</h1>

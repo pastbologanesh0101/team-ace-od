@@ -1,17 +1,13 @@
 import { redirect } from "next/navigation";
-import { createClient } from "@/lib/supabase/server";
-import { isAdminEmail } from "@/lib/admin";
-import SignIn from "./sign-in";
+import { currentRole } from "@/lib/auth";
+import PasscodeForm from "./passcode-form";
+
+export const dynamic = "force-dynamic";
 
 export default async function Home() {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
-  if (user) {
-    redirect(isAdminEmail(user.email) ? "/admin" : "/dashboard");
-  }
+  const role = await currentRole();
+  if (role === "admin") redirect("/admin");
+  if (role === "member") redirect("/dashboard");
 
   return (
     <div className="wrap">
@@ -21,13 +17,13 @@ export default async function Home() {
         </div>
       </div>
 
-      <h1>Sign in</h1>
+      <h1>Enter passcode</h1>
       <p className="sub">
-        Enter your email, we&apos;ll send a 6-digit code, you type it back in.
-        Use the email you want your OD records tied to.
+        Use the <b>team passcode</b> shared by the management head. Admins enter
+        the admin passcode instead. It&apos;s remembered on this device.
       </p>
 
-      <SignIn />
+      <PasscodeForm />
     </div>
   );
 }

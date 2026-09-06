@@ -1,12 +1,14 @@
 -- ============================================================
--- Team ACE — OD Tracker schema
--- Paste this into: Supabase dashboard -> SQL Editor -> New query -> Run
+-- Team ACE — OD Tracker schema  (passcode model, no Supabase Auth)
+-- Paste into: Supabase dashboard -> SQL Editor -> New query -> Run
+-- Safe to re-run: it drops and recreates the table.
 -- ============================================================
 
-create table if not exists public.od_entries (
+drop table if exists public.od_entries cascade;
+
+create table public.od_entries (
   id          uuid primary key default gen_random_uuid(),
-  user_id     uuid not null references auth.users (id) on delete cascade,
-  email       text not null,
+  device_id   text,                       -- random id from the member's browser
   name        text not null,
   reg_no      text not null,
   od_date     date not null,
@@ -15,31 +17,14 @@ create table if not exists public.od_entries (
   reason      text not null,
   status      text not null default 'pending'
               check (status in ('pending', 'approved', 'rejected')),
-  reviewed_by text,
   reviewed_at timestamptz,
   created_at  timestamptz not null default now()
 );
 
-create index if not exists od_entries_user_id_idx on public.od_entries (user_id);
-create index if not exists od_entries_od_date_idx  on public.od_entries (od_date);
+create index od_entries_od_date_idx on public.od_entries (od_date);
+create index od_entries_device_idx  on public.od_entries (device_id);
 
--- Row-Level Security ------------------------------------------
+-- Lock the table to server-side access only. The app talks to the DB
+-- with the Supabase SECRET key (bypasses RLS); the publishable key
+-- gets nothing. No policies = anon/publishable key is fully denied.
 alter table public.od_entries enable row level security;
-
--- A member may insert rows only for themselves.
-drop policy if exists "members insert own" on public.od_entries;
-create policy "members insert own"
-  on public.od_entries for insert
-  to authenticated
-  with check (user_id = auth.uid());
-
--- A member may read only their own rows.
-drop policy if exists "members read own" on public.od_entries;
-create policy "members read own"
-  on public.od_entries for select
-  to authenticated
-  using (user_id = auth.uid());
-
--- No update / delete policy for members  => they cannot edit or
--- delete once submitted. Admin actions run server-side with the
--- service_role key, which bypasses RLS.

@@ -1,14 +1,14 @@
 import { createClient } from "@supabase/supabase-js";
 
 /**
- * Service-role client. Bypasses Row-Level Security — use ONLY in
- * server code, after checking the caller is an admin. The key never
- * ships to the browser (no NEXT_PUBLIC_ prefix).
+ * Server-only Supabase client using the SECRET key. Bypasses RLS, so
+ * it must never be imported into client code. Every route that uses it
+ * checks the session cookie first.
  */
 export function createAdminClient() {
-  return createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.SUPABASE_SERVICE_ROLE_KEY!,
-    { auth: { autoRefreshToken: false, persistSession: false } },
-  );
+  const url =
+    process.env.SUPABASE_URL ?? process.env.NEXT_PUBLIC_SUPABASE_URL!;
+  return createClient(url, process.env.SUPABASE_SERVICE_ROLE_KEY!, {
+    auth: { autoRefreshToken: false, persistSession: false },
+  });
 }

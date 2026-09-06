@@ -1,15 +1,10 @@
 import { NextResponse } from "next/server";
-import { createClient } from "@/lib/supabase/server";
+import { currentRole } from "@/lib/auth";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { isAdminEmail } from "@/lib/admin";
 
 export async function POST(request: Request) {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
-  if (!user || !isAdminEmail(user.email)) {
+  const role = await currentRole();
+  if (role !== "admin") {
     return NextResponse.json({ error: "Not authorised." }, { status: 403 });
   }
 
@@ -27,19 +22,17 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Bad request." }, { status: 400 });
   }
 
-  const admin = createAdminClient();
-  const { error } = await admin
+  const db = createAdminClient();
+  const { error } = await db
     .from("od_entries")
     .update({
       status,
-      reviewed_by: user.email,
-      reviewed_at: new Date().toISOString(),
+      reviewed_at: status === "pending" ? null : new Date().toISOString(),
     })
     .eq("id", id);
 
   if (error) {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
-
   return NextResponse.json({ ok: true });
 }
