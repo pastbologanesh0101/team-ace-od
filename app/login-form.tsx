@@ -71,7 +71,7 @@ export default function LoginForm() {
   // ---------- admin ----------
   if (step === "admin") {
     return (
-      <form className="card" onSubmit={submitAdmin}>
+      <form className="card step" key="admin" onSubmit={submitAdmin}>
         <div className="field">
           <label htmlFor="passcode">Admin passcode</label>
           <input
@@ -105,7 +105,7 @@ export default function LoginForm() {
   // ---------- member: PIN ----------
   if (step === "pin") {
     return (
-      <form className="card" onSubmit={submitPin}>
+      <form className="card step" key="pin" onSubmit={submitPin}>
         <p className="sub" style={{ marginBottom: 16 }}>
           Signing in as <b>{name}</b> · {reg.trim().toUpperCase()}
         </p>
@@ -159,7 +159,7 @@ export default function LoginForm() {
 
   // ---------- member: reg number ----------
   return (
-    <form className="card" onSubmit={lookupReg}>
+    <form className="card step" key="reg" onSubmit={lookupReg}>
       <div className="field">
         <label htmlFor="reg">Registration number</label>
         <input
