@@ -3,6 +3,7 @@ import { currentSession } from "@/lib/auth";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { MEMBERS } from "@/lib/members";
 import AdminTable, { type AdminEntry } from "./admin-table";
+import BudgetTable from "./budget-table";
 import DayPicker from "./day-picker";
 import ResetPin from "./reset-pin";
 
@@ -71,6 +72,12 @@ export default async function AdminPage({
     .select("id", { count: "exact", head: true })
     .neq("status", "rejected");
 
+  // Every non-rejected entry, all dates — for the per-member OD budget.
+  const { data: budgetRows } = await db
+    .from("od_entries")
+    .select("reg_no,from_time,to_time,status")
+    .neq("status", "rejected");
+
   const { data: pinRows } = await db.from("member_pins").select("reg_no");
   const withPin = new Set((pinRows ?? []).map((r) => r.reg_no));
   const roster = MEMBERS.map((m) => ({
@@ -131,6 +138,8 @@ export default async function AdminPage({
       </div>
 
       <AdminTable entries={entries} />
+
+      <BudgetTable rows={budgetRows ?? []} />
 
       <div className="no-print">
         <ResetPin roster={roster} />

@@ -560,6 +560,79 @@ tbody tr:last-child td {
   }
 }
 
+/* ---------- OD budget ---------- */
+.budget {
+  margin-bottom: 18px;
+}
+.budget-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+.budget-label {
+  font-family: var(--font-mono);
+  font-size: 0.66rem;
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.13em;
+  color: var(--ink-faint);
+}
+.budget-figure {
+  font-size: 0.9rem;
+  color: var(--ink-soft);
+}
+.budget-figure b {
+  font-family: var(--font-mono);
+  font-size: 1.05rem;
+  color: var(--ink);
+}
+.budget-bar {
+  position: relative;
+  height: 6px;
+  margin: 12px 0 10px;
+  background: var(--rule);
+  border-radius: 3px;
+  overflow: hidden;
+}
+.budget-bar.sm {
+  display: block;
+  width: 120px;
+  height: 5px;
+  margin: 0;
+}
+.budget-fill {
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  min-width: 2px;
+  background: var(--accent);
+}
+.budget-note {
+  font-family: var(--font-mono);
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  letter-spacing: 0.09em;
+  color: var(--ink-faint);
+}
+.budget-admin {
+  margin-top: 4px;
+}
+.budget-col {
+  width: 132px;
+}
+tr.low td {
+  color: var(--ink);
+}
+tr.over td {
+  color: var(--accent);
+}
+tr.over .budget-fill {
+  opacity: 0.55;
+}
+
 /* ---------- print ---------- */
 .print-only {
   display: none;

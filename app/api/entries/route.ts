@@ -1,6 +1,14 @@
 import { NextResponse } from "next/server";
 import { currentSession } from "@/lib/auth";
 import { createAdminClient } from "@/lib/supabase/admin";
+import {
+  BUDGET_DAYS,
+  BUDGET_HOURS,
+  EPSILON,
+  budgetFor,
+  entryHours,
+  fmtDur,
+} from "@/lib/od-budget";
 
 const TIME_RE = /^([01]\d|2[0-3]):[0-5]\d$/;
 const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
@@ -24,7 +32,10 @@ export async function GET() {
   if (error) {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
-  return NextResponse.json({ entries: data ?? [] });
+  return NextResponse.json({
+    entries: data ?? [],
+    budget: budgetFor(data ?? []),
+  });
 }
 
 /** Create an OD entry for the signed-in member. */
@@ -66,6 +77,38 @@ export async function POST(request: Request) {
   }
 
   const db = createAdminClient();
+
+  // 14-day OD cap: only approved OD counts as spent.
+  const { data: approvedRows, error: budgetErr } = await db
+    .from("od_entries")
+    .select("from_time,to_time")
+    .eq("reg_no", session.regNo)
+    .eq("status", "approved");
+
+  if (budgetErr) {
+    return NextResponse.json({ error: budgetErr.message }, { status: 500 });
+  }
+
+  const approvedHours = (approvedRows ?? []).reduce(
+    (total, r) => total + entryHours(r.from_time, r.to_time),
+    0,
+  );
+  const thisHours = entryHours(from_time, to_time);
+
+  if (approvedHours + thisHours > BUDGET_HOURS + EPSILON) {
+    const left = Math.max(0, BUDGET_HOURS - approvedHours);
+    return NextResponse.json(
+      {
+        error: `This would put you over the ${BUDGET_DAYS}-day OD limit. You have ${fmtDur(
+          left,
+        )} of approved OD left and this entry is ${fmtDur(
+          thisHours,
+        )}. Contact the management head.`,
+      },
+      { status: 400 },
+    );
+  }
+
   const { error } = await db.from("od_entries").insert({
     reg_no: session.regNo,
     name: session.name,

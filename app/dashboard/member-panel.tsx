@@ -1,6 +1,13 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import {
+  BUDGET_DAYS,
+  BUDGET_HOURS,
+  EPSILON,
+  fmtDur,
+  type Budget,
+} from "@/lib/od-budget";
 
 type Entry = {
   id: string;
@@ -34,6 +41,7 @@ const EMPTY = { od_date: todayYmd(), from_time: "", to_time: "", reason: "" };
 export default function MemberPanel() {
   const [entry, setEntry] = useState(EMPTY);
   const [entries, setEntries] = useState<Entry[]>([]);
+  const [budget, setBudget] = useState<Budget | null>(null);
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
@@ -41,7 +49,11 @@ export default function MemberPanel() {
 
   const load = useCallback(async () => {
     const res = await fetch("/api/entries");
-    if (res.ok) setEntries((await res.json()).entries ?? []);
+    if (res.ok) {
+      const body = await res.json();
+      setEntries(body.entries ?? []);
+      setBudget(body.budget ?? null);
+    }
     setLoading(false);
   }, []);
 
@@ -61,6 +73,19 @@ export default function MemberPanel() {
       setError("“To time” must be after “From time”.");
       return;
     }
+    if (budget) {
+      const [fh, fm] = entry.from_time.split(":").map(Number);
+      const [th, tm] = entry.to_time.split(":").map(Number);
+      const hrs = (th * 60 + tm - (fh * 60 + fm)) / 60;
+      if (budget.approvedHours + hrs > BUDGET_HOURS + EPSILON) {
+        setError(
+          `This would put you over the ${BUDGET_DAYS}-day OD limit — you have ` +
+            `${fmtDur(budget.remainingHours)} of approved OD left. ` +
+            `Contact the management head.`,
+        );
+        return;
+      }
+    }
     setBusy(true);
     const res = await fetch("/api/entries", {
       method: "POST",
@@ -78,8 +103,39 @@ export default function MemberPanel() {
     load();
   }
 
+  const overBudget = budget != null && budget.remainingHours <= EPSILON;
+
   return (
     <>
+      {budget && (
+        <div className="card budget">
+          <div className="budget-head">
+            <span className="budget-label">OD budget</span>
+            <span className="budget-figure">
+              <b>{fmtDur(budget.remainingHours)}</b> left of {BUDGET_DAYS} days
+            </span>
+          </div>
+          <div className="budget-bar">
+            <div
+              className="budget-fill"
+              style={{
+                width: `${Math.min(
+                  100,
+                  (budget.approvedHours / BUDGET_HOURS) * 100,
+                )}%`,
+              }}
+            />
+          </div>
+          <p className="budget-note">
+            {fmtDur(budget.approvedHours)} approved
+            {budget.pendingHours > 0 && (
+              <> · {fmtDur(budget.pendingHours)} pending</>
+            )}
+            {overBudget && <> · limit reached</>}
+          </p>
+        </div>
+      )}
+
       <form className="card" onSubmit={submit}>
         <div className="field">
           <label htmlFor="od_date">Date</label>
