@@ -37,7 +37,12 @@ export async function GET() {
   const info = await loadCycleInfo(db, session.regNo);
   return NextResponse.json({
     entries: data ?? [],
-    budget: budgetFor(data ?? [], info.cycleStart, info.priorHours),
+    budget: budgetFor(
+      data ?? [],
+      info.cycleStart,
+      info.priorHours,
+      info.unlimited,
+    ),
   });
 }
 
@@ -85,7 +90,10 @@ export async function POST(request: Request) {
   const budget = await loadMemberBudget(db, session.regNo);
   const thisHours = entryHours(from_time, to_time);
 
-  if (budget.approvedHours + thisHours > BUDGET_HOURS + EPSILON) {
+  if (
+    !budget.unlimited &&
+    budget.approvedHours + thisHours > BUDGET_HOURS + EPSILON
+  ) {
     return NextResponse.json(
       {
         error: `This would put you over the ${BUDGET_DAYS}-day OD limit. You have ${fmtDur(

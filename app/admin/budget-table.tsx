@@ -19,13 +19,14 @@ type CycleRow = {
   reg_no: string;
   cycle_start: string | null;
   prior_hours: number | string | null;
+  unlimited: boolean | null;
 };
 
 /**
  * Per-member OD usage against the 14-day cap, for each member's
- * current budget cycle. Only approved OD is spent; pending is shown
- * for context. A member over the cap is locked out of sign-in until
- * the admin resets them.
+ * current budget cycle. Used = prior (carried over) + in-app approved.
+ * A member over the cap is locked out of sign-in until the admin
+ * resets them; "unlimited" members have no cap.
  */
 export default function BudgetTable({
   rows,
@@ -38,6 +39,9 @@ export default function BudgetTable({
   const prior = new Map(
     cycles.map((c) => [c.reg_no, Number(c.prior_hours ?? 0)]),
   );
+  const unlimited = new Map(
+    cycles.map((c) => [c.reg_no, Boolean(c.unlimited)]),
+  );
 
   const list = MEMBERS.map((m) => {
     const mine = rows.filter((r) => r.reg_no === m.regNo);
@@ -45,19 +49,26 @@ export default function BudgetTable({
       mine,
       cycleStart.get(m.regNo) ?? null,
       prior.get(m.regNo) ?? 0,
+      unlimited.get(m.regNo) ?? false,
     );
     return {
       name: m.name,
       regNo: m.regNo,
       budget: b,
-      low: !b.locked && b.remainingHours < HOURS_PER_DAY, // under a day left
-      pct: Math.min(100, (b.approvedHours / BUDGET_HOURS) * 100),
+      low: !b.locked && !b.unlimited && b.remainingHours < HOURS_PER_DAY,
+      pct: b.unlimited
+        ? 0
+        : Math.min(100, (b.approvedHours / BUDGET_HOURS) * 100),
     };
-  }).sort(
-    (a, b) =>
+  }).sort((a, b) => {
+    // unlimited members sink to the bottom; otherwise least-left first
+    if (a.budget.unlimited !== b.budget.unlimited)
+      return a.budget.unlimited ? 1 : -1;
+    return (
       a.budget.remainingHours - b.budget.remainingHours ||
-      a.name.localeCompare(b.name),
-  );
+      a.name.localeCompare(b.name)
+    );
+  });
 
   const lockedCount = list.filter((m) => m.budget.locked).length;
 
@@ -108,7 +119,9 @@ export default function BudgetTable({
                 </td>
                 <td className="mono nowrap">{fmtDur(m.budget.approvedHours)}</td>
                 <td className="mono nowrap">
-                  {m.budget.locked ? (
+                  {m.budget.unlimited ? (
+                    <span className="pill pending">no limit</span>
+                  ) : m.budget.locked ? (
                     <span className="pill rejected">
                       locked · over {fmtDur(m.budget.overBy)}
                     </span>
@@ -117,12 +130,14 @@ export default function BudgetTable({
                   )}
                 </td>
                 <td className="budget-col">
-                  <span className="budget-bar sm">
-                    <span
-                      className="budget-fill"
-                      style={{ width: `${m.pct}%` }}
-                    />
-                  </span>
+                  {!m.budget.unlimited && (
+                    <span className="budget-bar sm">
+                      <span
+                        className="budget-fill"
+                        style={{ width: `${m.pct}%` }}
+                      />
+                    </span>
+                  )}
                 </td>
                 <td className="nowrap">
                   {m.budget.locked && (

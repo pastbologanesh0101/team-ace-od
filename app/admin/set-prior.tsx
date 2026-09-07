@@ -4,9 +4,17 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { fmtDur, parseDur } from "@/lib/od-budget";
 
-type Row = { name: string; regNo: string; priorHours: number };
+type Row = {
+  name: string;
+  regNo: string;
+  priorHours: number;
+  unlimited: boolean;
+};
 
-/** Admin panel: set each member's carried-over OD (used before this app). */
+/**
+ * Admin panel: set each member's carried-over OD (used before this
+ * app) and toggle whether they're capped at 14 days at all.
+ */
 export default function SetPrior({ roster }: { roster: Row[] }) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
@@ -47,6 +55,26 @@ export default function SetPrior({ roster }: { roster: Row[] }) {
     }
   }
 
+  async function toggleUnlimited(r: Row, next: boolean) {
+    setBusy(r.regNo);
+    setMsg("");
+    const res = await fetch("/api/admin/set-unlimited", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ regNo: r.regNo, unlimited: next }),
+    });
+    setBusy(null);
+    if (res.ok) {
+      setMsg(
+        `${r.name}: ${next ? "no OD limit" : "capped at 14 days again"}.`,
+      );
+      router.refresh();
+    } else {
+      const b = await res.json().catch(() => ({}));
+      setMsg(b.error ?? "Update failed.");
+    }
+  }
+
   return (
     <section style={{ marginTop: 28 }}>
       <button
@@ -54,16 +82,17 @@ export default function SetPrior({ roster }: { roster: Row[] }) {
         type="button"
         onClick={() => setOpen((o) => !o)}
       >
-        {open ? "Hide" : "Set prior OD (carried over)"}
+        {open ? "Hide" : "Set prior OD / limits"}
       </button>
 
       {open && (
         <div className="card table-scroll" style={{ marginTop: 14 }}>
           <p className="sub" style={{ marginBottom: 16 }}>
-            OD each member used <b>before this app</b>. It adds on top of their
-            in-app approved OD toward the 14-day cap. Formats: <code>2d 6h</code>,{" "}
-            <code>3d</code>, <code>30:00</code> (h:mm), or a plain number of
-            hours.
+            <b>Prior OD</b> = time a member used before this app; it adds on top
+            of their in-app approved OD toward the 14-day cap. Formats:{" "}
+            <code>2d 6h</code>, <code>3d</code>, <code>30:00</code> (h:mm), or a
+            plain number of hours. <b>No limit</b> exempts a member from the cap
+            entirely.
           </p>
           <table>
             <thead>
@@ -72,6 +101,7 @@ export default function SetPrior({ roster }: { roster: Row[] }) {
                 <th>Reg No</th>
                 <th>Prior OD used</th>
                 <th />
+                <th>No limit</th>
               </tr>
             </thead>
             <tbody>
@@ -83,6 +113,7 @@ export default function SetPrior({ roster }: { roster: Row[] }) {
                     <input
                       value={valueFor(r)}
                       placeholder="0h"
+                      disabled={r.unlimited}
                       style={{ maxWidth: 140 }}
                       onChange={(e) =>
                         setDraft((d) => ({ ...d, [r.regNo]: e.target.value }))
@@ -95,11 +126,20 @@ export default function SetPrior({ roster }: { roster: Row[] }) {
                   <td>
                     <button
                       className="btn ok sm"
-                      disabled={busy === r.regNo}
+                      disabled={busy === r.regNo || r.unlimited}
                       onClick={() => save(r)}
                     >
                       {busy === r.regNo ? "…" : "Save"}
                     </button>
+                  </td>
+                  <td>
+                    <input
+                      type="checkbox"
+                      checked={r.unlimited}
+                      disabled={busy === r.regNo}
+                      style={{ width: "auto" }}
+                      onChange={(e) => toggleUnlimited(r, e.target.checked)}
+                    />
                   </td>
                 </tr>
               ))}

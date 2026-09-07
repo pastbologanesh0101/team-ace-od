@@ -12,18 +12,20 @@ type Db = ReturnType<typeof createAdminClient>;
 export type CycleInfo = {
   cycleStart: string | null;
   priorHours: number;
+  unlimited: boolean;
 };
 
-/** The member's cycle start + carried-over OD hours. */
+/** The member's cycle start, carried-over OD hours, and cap exemption. */
 export async function loadCycleInfo(db: Db, regNo: string): Promise<CycleInfo> {
   const { data } = await db
     .from("member_cycles")
-    .select("cycle_start,prior_hours")
+    .select("cycle_start,prior_hours,unlimited")
     .eq("reg_no", regNo)
     .maybeSingle();
   return {
     cycleStart: data?.cycle_start ?? null,
     priorHours: Number(data?.prior_hours ?? 0),
+    unlimited: Boolean(data?.unlimited),
   };
 }
 
@@ -36,7 +38,12 @@ export async function loadMemberBudget(db: Db, regNo: string): Promise<Budget> {
       .eq("reg_no", regNo),
     loadCycleInfo(db, regNo),
   ]);
-  return budgetFor(entries.data ?? [], info.cycleStart, info.priorHours);
+  return budgetFor(
+    entries.data ?? [],
+    info.cycleStart,
+    info.priorHours,
+    info.unlimited,
+  );
 }
 
 /** Start a fresh 14-day cycle now and clear any carry-over. */
@@ -53,6 +60,15 @@ export async function setPriorHours(db: Db, regNo: string, hours: number) {
   const now = new Date().toISOString();
   return db.from("member_cycles").upsert(
     { reg_no: regNo, prior_hours: hours, updated_at: now },
+    { onConflict: "reg_no" },
+  );
+}
+
+/** Exempt (or re-cap) a member from the 14-day OD limit. */
+export async function setUnlimited(db: Db, regNo: string, unlimited: boolean) {
+  const now = new Date().toISOString();
+  return db.from("member_cycles").upsert(
+    { reg_no: regNo, unlimited, updated_at: now },
     { onConflict: "reg_no" },
   );
 }

@@ -80,9 +80,12 @@ export default async function AdminPage({
     .neq("status", "rejected");
   const { data: cycleRows } = await db
     .from("member_cycles")
-    .select("reg_no,cycle_start,prior_hours");
+    .select("reg_no,cycle_start,prior_hours,unlimited");
   const priorByReg = new Map(
     (cycleRows ?? []).map((c) => [c.reg_no, Number(c.prior_hours ?? 0)]),
+  );
+  const unlimitedByReg = new Map(
+    (cycleRows ?? []).map((c) => [c.reg_no, Boolean(c.unlimited)]),
   );
 
   const { data: pinRows } = await db.from("member_pins").select("reg_no");
@@ -96,6 +99,7 @@ export default async function AdminPage({
     name: m.name,
     regNo: m.regNo,
     priorHours: priorByReg.get(m.regNo) ?? 0,
+    unlimited: unlimitedByReg.get(m.regNo) ?? false,
   }));
 
   const counts = {

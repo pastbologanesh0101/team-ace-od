@@ -62,29 +62,34 @@ export type Budget = {
   approvedInApp: number; // just the in-app approved part
   priorHours: number; // carried over from before this app
   pendingHours: number;
-  remainingHours: number; // clamped at 0
+  remainingHours: number; // clamped at 0; Infinity when unlimited
   overBy: number; // hours past the cap, else 0
-  locked: boolean; // used OD has passed the cap
+  locked: boolean; // used OD has passed the cap (never when unlimited)
+  unlimited: boolean; // member has no OD cap
 };
 
 export function budgetFor(
   rows: Row[],
   cycleStart?: string | null,
   priorHours = 0,
+  unlimited = false,
 ): Budget {
   const prior = Math.max(0, priorHours || 0);
   const approvedInApp = sumHours(rows, "approved", cycleStart);
   const approvedHours = approvedInApp + prior;
   const pendingHours = sumHours(rows, "pending", cycleStart);
-  const overBy = Math.max(0, approvedHours - BUDGET_HOURS);
+  const overBy = unlimited ? 0 : Math.max(0, approvedHours - BUDGET_HOURS);
   return {
     approvedHours,
     approvedInApp,
     priorHours: prior,
     pendingHours,
-    remainingHours: Math.max(0, BUDGET_HOURS - approvedHours),
+    remainingHours: unlimited
+      ? Infinity
+      : Math.max(0, BUDGET_HOURS - approvedHours),
     overBy,
-    locked: overBy > EPSILON,
+    locked: !unlimited && overBy > EPSILON,
+    unlimited,
   };
 }
 
