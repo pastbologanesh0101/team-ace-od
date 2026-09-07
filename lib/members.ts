@@ -20,6 +20,7 @@ export const MEMBERS: Member[] = [
   { name: "NILESH KUMAR SRIVASTAVA", regNo: "26BIT0338" },
   { name: "PARVESHH PRABHU", regNo: "24BEC0084" },
   { name: "PAYAL PRIYADARSHINI SAHOO", regNo: "25BCE0037" },
+  { name: "RIKHIL MODALAVALASA", regNo: "25BCE2884" },
   { name: "SAKCHAM PASARI", regNo: "25BCE2257" },
   { name: "SAMBHAV JAIN", regNo: "25BCE2396" },
   { name: "SHAAN AHAMED M", regNo: "25BCE2196" },
