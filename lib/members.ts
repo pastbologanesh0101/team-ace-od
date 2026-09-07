@@ -10,7 +10,7 @@ export const MEMBERS: Member[] = [
   { name: "ADHVIK REDDY", regNo: "25BCE2248" },
   { name: "AMITH JOHN KOSHY", regNo: "25BEC0091" },
   { name: "ANUSHA SHARMA", regNo: "25BVD0110" },
-  { name: "ARSHPREET DHILLON", regNo: "25BCE0050" },
+  { name: "ARSHPREET SUKHDEEP SINGH DHILLON", regNo: "25BCE0050" },
   { name: "ATHARV NAMDEO", regNo: "25BCE2267" },
   { name: "AZLAAN ALI LADHA", regNo: "25BCE2294" },
   { name: "DHRUV SHARMA", regNo: "24BCE0085" },
