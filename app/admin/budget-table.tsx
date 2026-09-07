@@ -2,55 +2,63 @@ import { MEMBERS } from "@/lib/members";
 import {
   BUDGET_DAYS,
   BUDGET_HOURS,
-  EPSILON,
   HOURS_PER_DAY,
-  entryHours,
+  budgetFor,
   fmtDur,
 } from "@/lib/od-budget";
+import ResetCycle from "./reset-cycle";
 
-type Row = {
+type EntryRow = {
   reg_no: string;
   from_time: string;
   to_time: string;
   status: string;
+  created_at: string;
 };
+type CycleRow = { reg_no: string; cycle_start: string };
 
 /**
- * Per-member OD usage against the 14-day cap. Only approved OD is
- * spent; pending is shown for context. Rows are every non-rejected
- * entry across all dates.
+ * Per-member OD usage against the 14-day cap, for each member's
+ * current budget cycle. Only approved OD is spent; pending is shown
+ * for context. A member over the cap is locked out of sign-in until
+ * the admin resets them.
  */
-export default function BudgetTable({ rows }: { rows: Row[] }) {
-  const tally = new Map<string, { approved: number; pending: number }>();
-  for (const m of MEMBERS) tally.set(m.regNo, { approved: 0, pending: 0 });
-
-  for (const r of rows) {
-    const acc = tally.get(r.reg_no);
-    if (!acc) continue; // entry from someone no longer on the roster
-    const h = entryHours(r.from_time, r.to_time);
-    if (r.status === "approved") acc.approved += h;
-    else if (r.status === "pending") acc.pending += h;
-  }
+export default function BudgetTable({
+  rows,
+  cycles,
+}: {
+  rows: EntryRow[];
+  cycles: CycleRow[];
+}) {
+  const cycleStart = new Map(cycles.map((c) => [c.reg_no, c.cycle_start]));
 
   const list = MEMBERS.map((m) => {
-    const acc = tally.get(m.regNo)!;
-    const remaining = Math.max(0, BUDGET_HOURS - acc.approved);
-    const over = acc.approved > BUDGET_HOURS + EPSILON;
+    const mine = rows.filter((r) => r.reg_no === m.regNo);
+    const b = budgetFor(mine, cycleStart.get(m.regNo) ?? null);
     return {
       name: m.name,
       regNo: m.regNo,
-      approved: acc.approved,
-      pending: acc.pending,
-      remaining,
-      over,
-      low: !over && remaining < HOURS_PER_DAY, // under a day left
-      pct: Math.min(100, (acc.approved / BUDGET_HOURS) * 100),
+      budget: b,
+      low: !b.locked && b.remainingHours < HOURS_PER_DAY, // under a day left
+      pct: Math.min(100, (b.approvedHours / BUDGET_HOURS) * 100),
     };
-  }).sort((a, b) => a.remaining - b.remaining || a.name.localeCompare(b.name));
+  }).sort(
+    (a, b) =>
+      a.budget.remainingHours - b.budget.remainingHours ||
+      a.name.localeCompare(b.name),
+  );
+
+  const lockedCount = list.filter((m) => m.budget.locked).length;
 
   return (
     <div className="no-print budget-admin">
       <h2>OD budget · {BUDGET_DAYS} days each</h2>
+      {lockedCount > 0 && (
+        <p className="msg err">
+          {lockedCount} member{lockedCount === 1 ? "" : "s"} over the limit —
+          sign-in blocked until you reset them.
+        </p>
+      )}
       <div className="card table-scroll">
         <table>
           <thead>
@@ -61,21 +69,31 @@ export default function BudgetTable({ rows }: { rows: Row[] }) {
               <th>Pending</th>
               <th>Left</th>
               <th className="budget-col">Used</th>
+              <th />
             </tr>
           </thead>
           <tbody>
             {list.map((m) => (
-              <tr key={m.regNo} className={m.over ? "over" : m.low ? "low" : ""}>
+              <tr
+                key={m.regNo}
+                className={m.budget.locked ? "over" : m.low ? "low" : ""}
+              >
                 <td className="nowrap">{m.name}</td>
                 <td className="mono nowrap">{m.regNo}</td>
-                <td className="mono">{fmtDur(m.approved)}</td>
+                <td className="mono">{fmtDur(m.budget.approvedHours)}</td>
                 <td className="mono">
-                  {m.pending > 0 ? fmtDur(m.pending) : "—"}
+                  {m.budget.pendingHours > 0
+                    ? fmtDur(m.budget.pendingHours)
+                    : "—"}
                 </td>
                 <td className="mono nowrap">
-                  {m.over
-                    ? `over by ${fmtDur(m.approved - BUDGET_HOURS)}`
-                    : fmtDur(m.remaining)}
+                  {m.budget.locked ? (
+                    <span className="pill rejected">
+                      locked · over {fmtDur(m.budget.overBy)}
+                    </span>
+                  ) : (
+                    fmtDur(m.budget.remainingHours)
+                  )}
                 </td>
                 <td className="budget-col">
                   <span className="budget-bar sm">
@@ -84,6 +102,11 @@ export default function BudgetTable({ rows }: { rows: Row[] }) {
                       style={{ width: `${m.pct}%` }}
                     />
                   </span>
+                </td>
+                <td className="nowrap">
+                  {m.budget.locked && (
+                    <ResetCycle regNo={m.regNo} name={m.name} />
+                  )}
                 </td>
               </tr>
             ))}

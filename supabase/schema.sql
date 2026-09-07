@@ -7,12 +7,22 @@
 
 drop table if exists public.od_entries cascade;
 drop table if exists public.member_pins cascade;
+drop table if exists public.member_cycles cascade;
 
 -- One PIN per member (set on first login, resettable by admin).
 create table public.member_pins (
   reg_no     text primary key,
   pin_hash   text not null,           -- scrypt: "<saltHex>:<hashHex>"
   updated_at timestamptz not null default now()
+);
+
+-- OD budget cycle per member. 14 full days (336 h) each; only approved
+-- entries created on/after cycle_start count. No row = every entry
+-- counts. Admin "resets" a member by setting cycle_start = now().
+create table public.member_cycles (
+  reg_no      text primary key,
+  cycle_start timestamptz not null default now(),
+  updated_at  timestamptz not null default now()
 );
 
 create table public.od_entries (
@@ -34,5 +44,6 @@ create index od_entries_reg_no_idx  on public.od_entries (reg_no);
 
 -- Server-side access only. The app uses the Supabase SECRET key
 -- (bypasses RLS); the publishable key is fully denied (no policies).
-alter table public.od_entries  enable row level security;
-alter table public.member_pins enable row level security;
+alter table public.od_entries    enable row level security;
+alter table public.member_pins   enable row level security;
+alter table public.member_cycles enable row level security;

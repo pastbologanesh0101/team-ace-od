@@ -10,6 +10,8 @@ import {
 import { memberByReg } from "@/lib/members";
 import { hashPin, isValidPin, verifyPin } from "@/lib/pin";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { loadMemberBudget } from "@/lib/od-cycle";
+import { BUDGET_DAYS } from "@/lib/od-budget";
 
 export async function POST(request: Request) {
   let body: Record<string, unknown>;
@@ -56,12 +58,26 @@ export async function POST(request: Request) {
       .eq("reg_no", member.regNo)
       .maybeSingle();
 
-    if (row) {
-      // existing PIN — verify
-      if (!verifyPin(pin, row.pin_hash)) {
-        return NextResponse.json({ error: "Wrong PIN." }, { status: 401 });
-      }
-    } else {
+    // existing PIN — verify it before anything else
+    if (row && !verifyPin(pin, row.pin_hash)) {
+      return NextResponse.json({ error: "Wrong PIN." }, { status: 401 });
+    }
+
+    // OD cap: block the login until the admin resets them.
+    const budget = await loadMemberBudget(db, member.regNo);
+    if (budget.locked) {
+      return NextResponse.json(
+        {
+          error:
+            `Your ${BUDGET_DAYS}-day OD allowance is used up, so sign-in is ` +
+            `blocked. Ask the management head to reset your OD.`,
+          locked: true,
+        },
+        { status: 403 },
+      );
+    }
+
+    if (!row) {
       // first login — this sets the PIN
       const { error } = await db
         .from("member_pins")

@@ -75,8 +75,11 @@ export default async function AdminPage({
   // Every non-rejected entry, all dates — for the per-member OD budget.
   const { data: budgetRows } = await db
     .from("od_entries")
-    .select("reg_no,from_time,to_time,status")
+    .select("reg_no,from_time,to_time,status,created_at")
     .neq("status", "rejected");
+  const { data: cycleRows } = await db
+    .from("member_cycles")
+    .select("reg_no,cycle_start");
 
   const { data: pinRows } = await db.from("member_pins").select("reg_no");
   const withPin = new Set((pinRows ?? []).map((r) => r.reg_no));
@@ -139,7 +142,7 @@ export default async function AdminPage({
 
       <AdminTable entries={entries} />
 
-      <BudgetTable rows={budgetRows ?? []} />
+      <BudgetTable rows={budgetRows ?? []} cycles={cycleRows ?? []} />
 
       <div className="no-print">
         <ResetPin roster={roster} />

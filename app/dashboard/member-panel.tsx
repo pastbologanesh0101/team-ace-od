@@ -131,7 +131,11 @@ export default function MemberPanel() {
             {budget.pendingHours > 0 && (
               <> · {fmtDur(budget.pendingHours)} pending</>
             )}
-            {overBudget && <> · limit reached</>}
+            {budget.locked ? (
+              <> · over limit — next sign-in is blocked until the head resets you</>
+            ) : (
+              overBudget && <> · limit reached</>
+            )}
           </p>
         </div>
       )}
