@@ -17,11 +17,14 @@ create table public.member_pins (
 );
 
 -- OD budget cycle per member. 14 full days (336 h) each; only approved
--- entries created on/after cycle_start count. No row = every entry
--- counts. Admin "resets" a member by setting cycle_start = now().
+-- entries created on/after cycle_start count (null = every entry
+-- counts). prior_hours = OD used before this app, added on top. Admin
+-- "resets" a member: cycle_start = now(), prior_hours = 0. No row =
+-- never reset, no carry-over.
 create table public.member_cycles (
   reg_no      text primary key,
-  cycle_start timestamptz not null default now(),
+  cycle_start timestamptz,
+  prior_hours numeric not null default 0,
   updated_at  timestamptz not null default now()
 );
 

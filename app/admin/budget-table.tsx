@@ -15,7 +15,11 @@ type EntryRow = {
   status: string;
   created_at: string;
 };
-type CycleRow = { reg_no: string; cycle_start: string };
+type CycleRow = {
+  reg_no: string;
+  cycle_start: string | null;
+  prior_hours: number | string | null;
+};
 
 /**
  * Per-member OD usage against the 14-day cap, for each member's
@@ -31,10 +35,17 @@ export default function BudgetTable({
   cycles: CycleRow[];
 }) {
   const cycleStart = new Map(cycles.map((c) => [c.reg_no, c.cycle_start]));
+  const prior = new Map(
+    cycles.map((c) => [c.reg_no, Number(c.prior_hours ?? 0)]),
+  );
 
   const list = MEMBERS.map((m) => {
     const mine = rows.filter((r) => r.reg_no === m.regNo);
-    const b = budgetFor(mine, cycleStart.get(m.regNo) ?? null);
+    const b = budgetFor(
+      mine,
+      cycleStart.get(m.regNo) ?? null,
+      prior.get(m.regNo) ?? 0,
+    );
     return {
       name: m.name,
       regNo: m.regNo,
@@ -65,10 +76,12 @@ export default function BudgetTable({
             <tr>
               <th>Name</th>
               <th>Reg No</th>
-              <th>Approved</th>
+              <th>Prior</th>
+              <th>In&#8209;app</th>
               <th>Pending</th>
+              <th>Used</th>
               <th>Left</th>
-              <th className="budget-col">Used</th>
+              <th className="budget-col">&nbsp;</th>
               <th />
             </tr>
           </thead>
@@ -80,12 +93,20 @@ export default function BudgetTable({
               >
                 <td className="nowrap">{m.name}</td>
                 <td className="mono nowrap">{m.regNo}</td>
-                <td className="mono">{fmtDur(m.budget.approvedHours)}</td>
+                <td className="mono">
+                  {m.budget.priorHours > 0 ? fmtDur(m.budget.priorHours) : "—"}
+                </td>
+                <td className="mono">
+                  {m.budget.approvedInApp > 0
+                    ? fmtDur(m.budget.approvedInApp)
+                    : "—"}
+                </td>
                 <td className="mono">
                   {m.budget.pendingHours > 0
                     ? fmtDur(m.budget.pendingHours)
                     : "—"}
                 </td>
+                <td className="mono nowrap">{fmtDur(m.budget.approvedHours)}</td>
                 <td className="mono nowrap">
                   {m.budget.locked ? (
                     <span className="pill rejected">

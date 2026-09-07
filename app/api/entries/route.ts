@@ -9,7 +9,7 @@ import {
   entryHours,
   fmtDur,
 } from "@/lib/od-budget";
-import { loadCycleStart, loadMemberBudget } from "@/lib/od-cycle";
+import { loadCycleInfo, loadMemberBudget } from "@/lib/od-cycle";
 
 const TIME_RE = /^([01]\d|2[0-3]):[0-5]\d$/;
 const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
@@ -34,10 +34,10 @@ export async function GET() {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 
-  const cycleStart = await loadCycleStart(db, session.regNo);
+  const info = await loadCycleInfo(db, session.regNo);
   return NextResponse.json({
     entries: data ?? [],
-    budget: budgetFor(data ?? [], cycleStart),
+    budget: budgetFor(data ?? [], info.cycleStart, info.priorHours),
   });
 }
 

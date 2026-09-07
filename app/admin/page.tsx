@@ -6,6 +6,7 @@ import AdminTable, { type AdminEntry } from "./admin-table";
 import BudgetTable from "./budget-table";
 import DayPicker from "./day-picker";
 import ResetPin from "./reset-pin";
+import SetPrior from "./set-prior";
 
 export const dynamic = "force-dynamic";
 
@@ -79,7 +80,10 @@ export default async function AdminPage({
     .neq("status", "rejected");
   const { data: cycleRows } = await db
     .from("member_cycles")
-    .select("reg_no,cycle_start");
+    .select("reg_no,cycle_start,prior_hours");
+  const priorByReg = new Map(
+    (cycleRows ?? []).map((c) => [c.reg_no, Number(c.prior_hours ?? 0)]),
+  );
 
   const { data: pinRows } = await db.from("member_pins").select("reg_no");
   const withPin = new Set((pinRows ?? []).map((r) => r.reg_no));
@@ -87,6 +91,11 @@ export default async function AdminPage({
     name: m.name,
     regNo: m.regNo,
     hasPin: withPin.has(m.regNo),
+  }));
+  const priorRoster = MEMBERS.map((m) => ({
+    name: m.name,
+    regNo: m.regNo,
+    priorHours: priorByReg.get(m.regNo) ?? 0,
   }));
 
   const counts = {
@@ -145,6 +154,7 @@ export default async function AdminPage({
       <BudgetTable rows={budgetRows ?? []} cycles={cycleRows ?? []} />
 
       <div className="no-print">
+        <SetPrior roster={priorRoster} />
         <ResetPin roster={roster} />
       </div>
     </div>

@@ -127,7 +127,10 @@ export default function MemberPanel() {
             />
           </div>
           <p className="budget-note">
-            {fmtDur(budget.approvedHours)} approved
+            {fmtDur(budget.approvedHours)} used
+            {budget.priorHours > 0 && (
+              <> (incl. {fmtDur(budget.priorHours)} carried over)</>
+            )}
             {budget.pendingHours > 0 && (
               <> · {fmtDur(budget.pendingHours)} pending</>
             )}

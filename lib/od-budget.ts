@@ -5,8 +5,11 @@
  *
  * A member has a budget *cycle*: when the admin resets them, only
  * entries created on/after that reset count. No cycle start = every
- * entry counts. Once approved OD passes the cap the member is "locked"
- * and can't sign in until the admin resets them (see lib/od-cycle.ts).
+ * entry counts. On top of in-app OD sits `priorHours` — OD the member
+ * had already used before this app, carried over by the admin. Used
+ * OD = priorHours + in-app approved. Once that passes the cap the
+ * member is "locked" and can't sign in until the admin resets them
+ * (see lib/od-cycle.ts).
  *
  * This module is pure (no server-only imports) so it is safe to use
  * from client components too.
@@ -55,19 +58,29 @@ export function sumHours(
 }
 
 export type Budget = {
-  approvedHours: number;
+  approvedHours: number; // total used: prior + in-app approved
+  approvedInApp: number; // just the in-app approved part
+  priorHours: number; // carried over from before this app
   pendingHours: number;
   remainingHours: number; // clamped at 0
   overBy: number; // hours past the cap, else 0
-  locked: boolean; // approved OD has passed the cap
+  locked: boolean; // used OD has passed the cap
 };
 
-export function budgetFor(rows: Row[], cycleStart?: string | null): Budget {
-  const approvedHours = sumHours(rows, "approved", cycleStart);
+export function budgetFor(
+  rows: Row[],
+  cycleStart?: string | null,
+  priorHours = 0,
+): Budget {
+  const prior = Math.max(0, priorHours || 0);
+  const approvedInApp = sumHours(rows, "approved", cycleStart);
+  const approvedHours = approvedInApp + prior;
   const pendingHours = sumHours(rows, "pending", cycleStart);
   const overBy = Math.max(0, approvedHours - BUDGET_HOURS);
   return {
     approvedHours,
+    approvedInApp,
+    priorHours: prior,
     pendingHours,
     remainingHours: Math.max(0, BUDGET_HOURS - approvedHours),
     overBy,
@@ -83,4 +96,45 @@ export function fmtDur(hours: number): string {
   if (d > 0 && h > 0) return `${d}d ${h}h`;
   if (d > 0) return `${d}d`;
   return `${h}h`;
+}
+
+/**
+ * Parse a human duration into hours. Accepts "2d 6h", "2d", "6h",
+ * "1 day 30 mins", "30:45" (h:mm), "30:45:00" (h:mm:ss) or a plain
+ * number (read as hours). Returns null if nothing parses; "" -> 0.
+ */
+export function parseDur(input: string): number | null {
+  let s = input.trim().toLowerCase();
+  if (!s) return 0;
+  s = s
+    .replace(/days?/g, "d")
+    .replace(/hours?|hrs?/g, "h")
+    .replace(/minutes?|mins?/g, "m")
+    .replace(/\s+/g, " ")
+    .trim();
+
+  // clock form: H:MM or H:MM:SS
+  const clock = s.match(/^(\d+):([0-5]?\d)(?::([0-5]?\d))?$/);
+  if (clock) {
+    return (
+      Number(clock[1]) +
+      Number(clock[2]) / 60 +
+      (clock[3] ? Number(clock[3]) / 3600 : 0)
+    );
+  }
+
+  // Nd Mh Km (each part optional, but at least one present)
+  const dhm = s.match(
+    /^(?:(\d+(?:\.\d+)?)\s*d)?\s*(?:(\d+(?:\.\d+)?)\s*h)?\s*(?:(\d+(?:\.\d+)?)\s*m)?$/,
+  );
+  if (dhm && (dhm[1] || dhm[2] || dhm[3])) {
+    return (
+      Number(dhm[1] || 0) * HOURS_PER_DAY +
+      Number(dhm[2] || 0) +
+      Number(dhm[3] || 0) / 60
+    );
+  }
+
+  const num = Number(s);
+  return Number.isFinite(num) ? num : null;
 }
