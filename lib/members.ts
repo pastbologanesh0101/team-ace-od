@@ -17,6 +17,7 @@ export const MEMBERS: Member[] = [
   { name: "DHRUV SHARMA", regNo: "24BCE0085" },
   { name: "HARSHIT GUPTA", regNo: "25BCE2252" },
   { name: "IPSHITA AGRAWAL", regNo: "25BME0434" },
+  { name: "ISHIT KUMAR", regNo: "25BCE0868" },
   { name: "NILESH KUMAR SRIVASTAVA", regNo: "26BIT0338" },
   { name: "PARVESHH PRABHU", regNo: "24BEC0084" },
   { name: "PAYAL PRIYADARSHINI SAHOO", regNo: "25BCE0037" },
