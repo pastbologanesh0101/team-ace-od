@@ -687,9 +687,6 @@ tr.over .budget-fill {
     color: #000;
     line-height: 1.35;
   }
-  .od-sheet + .od-sheet {
-    page-break-before: always;
-  }
 
   .od-head {
     display: flex;
@@ -755,6 +752,12 @@ tr.over .budget-fill {
   }
   .od-table th {
     font-weight: 400;
+  }
+  .od-table thead {
+    display: table-header-group;
+  }
+  .od-table tbody tr {
+    page-break-inside: avoid;
   }
   .od-table tbody td {
     height: 32px;

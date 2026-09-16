@@ -30,7 +30,7 @@ function fmtDMY(d: string) {
   return `${day}/${m}/${y}`;
 }
 
-const ROWS_PER_SHEET = 12;
+const BLANK_ROWS = 12;
 
 export default function AdminTable({ entries }: { entries: AdminEntry[] }) {
   const router = useRouter();
@@ -56,13 +56,10 @@ export default function AdminTable({ entries }: { entries: AdminEntry[] }) {
 
   const approved = entries.filter((e) => e.status === "approved");
 
-  // split approved entries into sheets of 8 (the official form has 8 rows)
-  const sheets: (AdminEntry | null)[][] = [];
-  for (let i = 0; i < Math.max(approved.length, 1); i += ROWS_PER_SHEET) {
-    const chunk: (AdminEntry | null)[] = approved.slice(i, i + ROWS_PER_SHEET);
-    while (chunk.length < ROWS_PER_SHEET) chunk.push(null);
-    sheets.push(chunk);
-  }
+  // one continuous table — the browser paginates it, filling each printed
+  // page with as many rows as fit (header row repeats via thead)
+  const printRows: (AdminEntry | null)[] =
+    approved.length > 0 ? approved : Array(BLANK_ROWS).fill(null);
 
   return (
     <>
@@ -152,98 +149,92 @@ export default function AdminTable({ entries }: { entries: AdminEntry[] }) {
 
       {/* -------- print: official Team ACE On-Duty form -------- */}
       <div className="print-only">
-        {sheets.map((rows, s) => (
-          <section className="od-sheet" key={s}>
-            <header className="od-head">
-              <img className="od-vit" src="/vit-logo.png" alt="VIT" />
-              <img className="od-ace" src="/ace-logo.png" alt="ACE" />
-            </header>
+        <section className="od-sheet">
+          <header className="od-head">
+            <img className="od-vit" src="/vit-logo.png" alt="VIT" />
+            <img className="od-ace" src="/ace-logo.png" alt="ACE" />
+          </header>
 
-            <h1 className="od-title">TEAM ACE: ON-DUTY (OD)</h1>
-            <p className="od-subtitle">On Duty Record</p>
+          <h1 className="od-title">TEAM ACE: ON-DUTY (OD)</h1>
+          <p className="od-subtitle">On Duty Record</p>
 
-            <div className="od-refs">
+          <div className="od-refs">
+            <p>
+              REF NUMBER: <span className="od-fill" />
+            </p>
+            <p>
+              SCHOOL: <span className="od-fill" />
+            </p>
+          </div>
+
+          <table className="od-table">
+            <thead>
+              <tr>
+                <th className="od-sr">Sr No</th>
+                <th>Name</th>
+                <th>Reg Number</th>
+                <th>Date(DD/MM/YYYY)</th>
+                <th>Start time</th>
+                <th>End Time</th>
+              </tr>
+            </thead>
+            <tbody>
+              {printRows.map((e, i) => (
+                <tr key={i}>
+                  <td className="od-sr">{i + 1}</td>
+                  <td>{e?.name ?? ""}</td>
+                  <td>{e?.reg_no ?? ""}</td>
+                  <td>{e ? fmtDMY(e.od_date) : ""}</td>
+                  <td>{e ? fmtTime(e.from_time) : ""}</td>
+                  <td>{e ? fmtTime(e.to_time) : ""}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+
+          <h3 className="od-h">DUTY DETAILS</h3>
+          <table className="od-details">
+            <tbody>
+              {[
+                "EVENT DETAILS",
+                "EVENT AUTHORITY",
+                "EVENT NAME",
+                "EVENT VENUE",
+                "WORK DETAILS",
+                "SPECIAL INSTRUCTIONS",
+              ].map((label) => (
+                <tr key={label}>
+                  <td className="od-lbl">{label}</td>
+                  <td />
+                </tr>
+              ))}
+            </tbody>
+          </table>
+
+          <h3 className="od-h">AUTHORIZATION</h3>
+          <div className="od-sign">
+            <div>
+              <div className="od-sigline" />
               <p>
-                REF NUMBER: <span className="od-fill" />
+                <b>Team Captain</b>
               </p>
               <p>
-                SCHOOL: <span className="od-fill" />
+                <b>DATE:</b>
+                <span className="od-fill od-fill-sm" />
               </p>
             </div>
-
-            <table className="od-table">
-              <thead>
-                <tr>
-                  <th className="od-sr">Sr No</th>
-                  <th>Name</th>
-                  <th>Reg Number</th>
-                  <th>Date(DD/MM/YYYY)</th>
-                  <th>Start time</th>
-                  <th>End Time</th>
-                </tr>
-              </thead>
-              <tbody>
-                {rows.map((e, i) => (
-                  <tr key={i}>
-                    <td className="od-sr">{i + 1}</td>
-                    <td>{e?.name ?? ""}</td>
-                    <td>{e?.reg_no ?? ""}</td>
-                    <td>{e ? fmtDMY(e.od_date) : ""}</td>
-                    <td>{e ? fmtTime(e.from_time) : ""}</td>
-                    <td>{e ? fmtTime(e.to_time) : ""}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-
-            {s === sheets.length - 1 && (
-              <>
-                <h3 className="od-h">DUTY DETAILS</h3>
-                <table className="od-details">
-                  <tbody>
-                    {[
-                      "EVENT DETAILS",
-                      "EVENT AUTHORITY",
-                      "EVENT NAME",
-                      "EVENT VENUE",
-                      "WORK DETAILS",
-                      "SPECIAL INSTRUCTIONS",
-                    ].map((label) => (
-                      <tr key={label}>
-                        <td className="od-lbl">{label}</td>
-                        <td />
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-
-                <h3 className="od-h">AUTHORIZATION</h3>
-                <div className="od-sign">
-                  <div>
-                    <div className="od-sigline" />
-                    <p>
-                      <b>Team Captain</b>
-                    </p>
-                    <p>
-                      <b>DATE:</b>
-                      <span className="od-fill od-fill-sm" />
-                    </p>
-                  </div>
-                  <div>
-                    <div className="od-sigline" />
-                    <p>
-                      <b>Faculty Co-ordinator/ HOD(SCOPE)</b>
-                    </p>
-                    <p>
-                      <b>DATE:</b>
-                      <span className="od-fill od-fill-sm" />
-                    </p>
-                  </div>
-                </div>
-              </>
-            )}
-          </section>
-        ))}
+            <div>
+              <div className="od-sigline" />
+              <p>
+                <b>Faculty Co-ordinator/ HOD(SCOPE)</b>
+              </p>
+              <p>
+                <b>DATE:</b>
+                <span className="od-fill od-fill-sm" />
+              </p>
+            </div>
+          </div>
+        </section>
       </div>
     </>
   );
