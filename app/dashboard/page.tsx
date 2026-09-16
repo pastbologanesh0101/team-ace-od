@@ -27,7 +27,11 @@ export default async function Dashboard() {
       <p className="sub">
         {session.name} · {session.regNo} &nbsp;·&nbsp; current week:{" "}
         <b>{weekLabel(currentWeekKey())}</b>. Once you submit an entry you can&apos;t
-        edit it — message the management head if something is wrong.
+        edit it —{" "}
+        <a href="https://wa.me/918050200772" target="_blank" rel="noopener noreferrer">
+          message the management head
+        </a>{" "}
+        if something is wrong.
       </p>
 
       <MemberPanel />
