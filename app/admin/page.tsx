@@ -86,7 +86,7 @@ export default async function AdminPage({
     query = query.eq("status", statusFilter);
   }
 
-  const { data } = await query;
+  const { data, error: queryError } = await query;
   const entries = (data ?? []) as AdminEntry[];
 
   const { count: grandTotal } = await db
@@ -168,6 +168,13 @@ export default async function AdminPage({
       </div>
 
       <h1 className="no-print">{heading}</h1>
+      {queryError && (
+        <p className="msg err no-print">
+          Couldn&apos;t load entries: {queryError.message}. If this mentions a
+          missing column, the database migration hasn&apos;t been run yet —
+          see <span className="mono">supabase/*.sql</span> in the repo.
+        </p>
+      )}
       <p className="sub no-print">
         {view === "archived" ? (
           <>
