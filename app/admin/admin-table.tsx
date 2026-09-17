@@ -33,13 +33,7 @@ function fmtDMY(d: string) {
 
 const BLANK_ROWS = 12;
 
-export default function AdminTable({
-  entries,
-  view = "active",
-}: {
-  entries: AdminEntry[];
-  view?: "active" | "archived";
-}) {
+export default function AdminTable({ entries }: { entries: AdminEntry[] }) {
   const router = useRouter();
   const [busy, setBusy] = useState<string | null>(null);
   const [bulkBusy, setBulkBusy] = useState(false);
@@ -63,19 +57,22 @@ export default function AdminTable({
     router.refresh();
   }
 
-  async function setArchived(ids: string[], archived: boolean) {
+  // "Delete" hides a processed entry from the working list for good — it
+  // still counts toward the member's OD budget (the record isn't erased,
+  // just archived server-side), but there's no restore in this UI.
+  async function remove(ids: string[]) {
     if (ids.length === 0) return;
     setBulkBusy(true);
     setError("");
     const res = await fetch("/api/admin/archive", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ ids, archived }),
+      body: JSON.stringify({ ids, archived: true }),
     });
     setBulkBusy(false);
     if (!res.ok) {
       const b = await res.json().catch(() => ({}));
-      setError(b.error ?? "Update failed.");
+      setError(b.error ?? "Delete failed.");
       return;
     }
     setSelected(new Set());
@@ -91,9 +88,15 @@ export default function AdminTable({
     });
   }
 
+  // only processed entries can be selected/deleted — pending ones need a
+  // decision first
+  const deletable = entries.filter((e) => e.status !== "pending");
+
   function toggleAll() {
     setSelected((prev) =>
-      prev.size === entries.length ? new Set() : new Set(entries.map((e) => e.id)),
+      prev.size === deletable.length
+        ? new Set()
+        : new Set(deletable.map((e) => e.id)),
     );
   }
 
@@ -113,31 +116,21 @@ export default function AdminTable({
             <span>
               <b>{selected.size}</b> selected
             </span>
-            {view === "active" ? (
-              <button
-                className="btn bad sm"
-                disabled={bulkBusy}
-                onClick={() => {
-                  if (
-                    window.confirm(
-                      `Clear ${selected.size} ${selected.size === 1 ? "entry" : "entries"} from this list? They'll still count toward each member's OD budget — restore them any time from Show: Cleared.`,
-                    )
-                  ) {
-                    setArchived(Array.from(selected), true);
-                  }
-                }}
-              >
-                Clear selected
-              </button>
-            ) : (
-              <button
-                className="btn ok sm"
-                disabled={bulkBusy}
-                onClick={() => setArchived(Array.from(selected), false)}
-              >
-                Restore selected
-              </button>
-            )}
+            <button
+              className="btn bad sm"
+              disabled={bulkBusy}
+              onClick={() => {
+                if (
+                  window.confirm(
+                    `Delete ${selected.size} ${selected.size === 1 ? "entry" : "entries"}? This can't be undone from here — they'll still count toward each member's OD budget.`,
+                  )
+                ) {
+                  remove(Array.from(selected));
+                }
+              }}
+            >
+              Delete selected
+            </button>
             <button
               className="btn ghost sm"
               disabled={bulkBusy}
@@ -149,9 +142,7 @@ export default function AdminTable({
         )}
 
         {entries.length === 0 ? (
-          <p className="empty">
-            {view === "archived" ? "Nothing cleared here." : "No entries here yet."}
-          </p>
+          <p className="empty">No entries here yet.</p>
         ) : (
           <div className="card table-scroll">
             <table>
@@ -160,9 +151,12 @@ export default function AdminTable({
                   <th className="no-print">
                     <input
                       type="checkbox"
-                      checked={selected.size === entries.length}
+                      checked={
+                        deletable.length > 0 && selected.size === deletable.length
+                      }
                       onChange={toggleAll}
-                      aria-label="Select all"
+                      aria-label="Select all processed entries"
+                      disabled={deletable.length === 0}
                     />
                   </th>
                   <th>Name</th>
@@ -179,12 +173,14 @@ export default function AdminTable({
                 {entries.map((e) => (
                   <tr key={e.id}>
                     <td className="no-print">
-                      <input
-                        type="checkbox"
-                        checked={selected.has(e.id)}
-                        onChange={() => toggle(e.id)}
-                        aria-label={`Select ${e.name}'s entry`}
-                      />
+                      {e.status !== "pending" && (
+                        <input
+                          type="checkbox"
+                          checked={selected.has(e.id)}
+                          onChange={() => toggle(e.id)}
+                          aria-label={`Select ${e.name}'s entry`}
+                        />
+                      )}
                     </td>
                     <td className="nowrap">{e.name}</td>
                     <td className="mono nowrap">{e.reg_no}</td>
@@ -197,67 +193,57 @@ export default function AdminTable({
                     </td>
                     <td className="no-print">
                       <div className="row-actions">
-                        {view === "archived" ? (
+                        {e.status !== "approved" && (
+                          <button
+                            className="btn ok sm"
+                            disabled={busy === e.id}
+                            onClick={() => review(e.id, "approved")}
+                          >
+                            Approve
+                          </button>
+                        )}
+                        {e.status !== "rejected" && (
+                          <button
+                            className="btn bad sm"
+                            disabled={busy === e.id}
+                            onClick={() => {
+                              if (
+                                window.confirm(
+                                  `Reject ${e.name}'s OD? It will be removed from this list.`,
+                                )
+                              ) {
+                                review(e.id, "rejected");
+                              }
+                            }}
+                          >
+                            Reject
+                          </button>
+                        )}
+                        {e.status !== "pending" && (
+                          <button
+                            className="btn ghost sm"
+                            disabled={busy === e.id}
+                            onClick={() => review(e.id, "pending")}
+                          >
+                            Undo
+                          </button>
+                        )}
+                        {e.status !== "pending" && (
                           <button
                             className="btn ghost sm"
                             disabled={bulkBusy}
-                            onClick={() => setArchived([e.id], false)}
+                            onClick={() => {
+                              if (
+                                window.confirm(
+                                  `Delete ${e.name}'s entry? This can't be undone from here — it'll still count toward their OD budget.`,
+                                )
+                              ) {
+                                remove([e.id]);
+                              }
+                            }}
                           >
-                            Restore
+                            Delete
                           </button>
-                        ) : (
-                          <>
-                            {e.status !== "approved" && (
-                              <button
-                                className="btn ok sm"
-                                disabled={busy === e.id}
-                                onClick={() => review(e.id, "approved")}
-                              >
-                                Approve
-                              </button>
-                            )}
-                            {e.status !== "rejected" && (
-                              <button
-                                className="btn bad sm"
-                                disabled={busy === e.id}
-                                onClick={() => {
-                                  if (
-                                    window.confirm(
-                                      `Reject ${e.name}'s OD? It will be removed from this list.`,
-                                    )
-                                  ) {
-                                    review(e.id, "rejected");
-                                  }
-                                }}
-                              >
-                                Reject
-                              </button>
-                            )}
-                            {e.status !== "pending" && (
-                              <button
-                                className="btn ghost sm"
-                                disabled={busy === e.id}
-                                onClick={() => review(e.id, "pending")}
-                              >
-                                Undo
-                              </button>
-                            )}
-                            <button
-                              className="btn ghost sm"
-                              disabled={bulkBusy}
-                              onClick={() => {
-                                if (
-                                  window.confirm(
-                                    `Clear ${e.name}'s entry from this list? It'll still count toward their OD budget — restore it any time from Show: Cleared.`,
-                                  )
-                                ) {
-                                  setArchived([e.id], true);
-                                }
-                              }}
-                            >
-                              Clear
-                            </button>
-                          </>
                         )}
                       </div>
                     </td>
@@ -268,7 +254,7 @@ export default function AdminTable({
           </div>
         )}
         {error && <p className="msg err">{error}</p>}
-        {view === "active" && approved.length === 0 && entries.length > 0 && (
+        {approved.length === 0 && entries.length > 0 && (
           <p className="msg muted no-print">
             Nothing approved yet — the printed form fills in only approved entries.
           </p>

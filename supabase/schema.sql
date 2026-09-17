@@ -42,8 +42,8 @@ create table public.od_entries (
               check (status in ('pending', 'approved', 'rejected')),
   reviewed_at timestamptz,
   created_at  timestamptz not null default now(),
-  -- set when the admin "clears" a printed entry off the working list;
-  -- still counts toward the member's OD budget, restorable any time
+  -- set when the admin deletes a processed entry off the working list;
+  -- still counts toward the member's OD budget, no UI to restore it
   archived_at timestamptz
 );
 
