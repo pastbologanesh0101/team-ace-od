@@ -6,18 +6,39 @@ export default function DayPicker({
   days,
   current,
   status,
+  from,
+  to,
 }: {
   days: { key: string; label: string }[];
   current: string;
   status: string;
+  from: string;
+  to: string;
 }) {
   const router = useRouter();
 
-  function go(next: { day?: string; status?: string }) {
+  function go(next: {
+    day?: string;
+    status?: string;
+    from?: string;
+    to?: string;
+  }) {
     const params = new URLSearchParams();
     params.set("day", next.day ?? current);
     params.set("status", next.status ?? status);
+    const nextFrom = next.from ?? from;
+    const nextTo = next.to ?? to;
+    if (nextFrom) params.set("from", nextFrom);
+    if (nextTo) params.set("to", nextTo);
     router.push(`/admin?${params.toString()}`);
+  }
+
+  // picking a day clears the range; setting a range clears the day
+  function goDay(day: string) {
+    go({ day, from: "", to: "" });
+  }
+  function goRange(next: { from?: string; to?: string }) {
+    go({ day: "all", ...next });
   }
 
   return (
@@ -27,7 +48,7 @@ export default function DayPicker({
         <select
           id="day"
           value={current}
-          onChange={(e) => go({ day: e.target.value })}
+          onChange={(e) => goDay(e.target.value)}
         >
           <option value="all">All days</option>
           {days.map((d) => (
@@ -39,6 +60,36 @@ export default function DayPicker({
       </div>
 
       <div className="field">
+        <label htmlFor="from">From date</label>
+        <input
+          id="from"
+          type="date"
+          value={from}
+          onChange={(e) => goRange({ from: e.target.value })}
+        />
+      </div>
+
+      <div className="field">
+        <label htmlFor="to">To date</label>
+        <input
+          id="to"
+          type="date"
+          value={to}
+          onChange={(e) => goRange({ to: e.target.value })}
+        />
+      </div>
+
+      {(from || to) && (
+        <button
+          className="btn ghost sm"
+          type="button"
+          onClick={() => goRange({ from: "", to: "" })}
+        >
+          Clear range
+        </button>
+      )}
+
+      <div className="field">
         <label htmlFor="status">Show</label>
         <select
           id="status"
@@ -48,6 +99,7 @@ export default function DayPicker({
           <option value="all">All</option>
           <option value="pending">Pending</option>
           <option value="approved">Approved</option>
+          <option value="cleared">Cleared</option>
         </select>
       </div>
 

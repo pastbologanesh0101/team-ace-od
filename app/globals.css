@@ -235,6 +235,17 @@ input#passcode {
   letter-spacing: 0.04em;
 }
 
+input[type="checkbox"] {
+  width: 16px;
+  height: 16px;
+  margin: 0;
+  padding: 0;
+  border: 1px solid var(--rule-strong);
+  border-radius: 3px;
+  accent-color: var(--accent);
+  cursor: pointer;
+}
+
 textarea {
   border: 1px solid var(--rule-strong);
   border-radius: 4px;
@@ -434,6 +445,26 @@ tbody tr:last-child td {
   display: flex;
   gap: 8px;
   flex-wrap: nowrap;
+}
+
+.bulk-bar {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  margin-bottom: 14px;
+  padding: 12px 16px;
+  background: var(--paper-2);
+  border: 1px solid var(--rule-strong);
+  border-radius: 4px;
+  font-family: var(--font-mono);
+  font-size: 0.78rem;
+}
+.bulk-bar b {
+  color: var(--ink);
+  font-size: 1rem;
+}
+.bulk-bar .btn:last-child {
+  margin-left: auto;
 }
 
 /* ---------- toolbar / counts ---------- */

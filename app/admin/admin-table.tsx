@@ -14,6 +14,7 @@ export type AdminEntry = {
   status: "pending" | "approved" | "rejected";
   reviewed_at: string | null;
   created_at: string;
+  archived_at?: string | null;
 };
 
 function fmtTime(t: string) {
@@ -32,10 +33,18 @@ function fmtDMY(d: string) {
 
 const BLANK_ROWS = 12;
 
-export default function AdminTable({ entries }: { entries: AdminEntry[] }) {
+export default function AdminTable({
+  entries,
+  view = "active",
+}: {
+  entries: AdminEntry[];
+  view?: "active" | "archived";
+}) {
   const router = useRouter();
   const [busy, setBusy] = useState<string | null>(null);
+  const [bulkBusy, setBulkBusy] = useState(false);
   const [error, setError] = useState("");
+  const [selected, setSelected] = useState<Set<string>>(new Set());
 
   async function review(id: string, status: "approved" | "rejected" | "pending") {
     setBusy(id);
@@ -54,6 +63,40 @@ export default function AdminTable({ entries }: { entries: AdminEntry[] }) {
     router.refresh();
   }
 
+  async function setArchived(ids: string[], archived: boolean) {
+    if (ids.length === 0) return;
+    setBulkBusy(true);
+    setError("");
+    const res = await fetch("/api/admin/archive", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ ids, archived }),
+    });
+    setBulkBusy(false);
+    if (!res.ok) {
+      const b = await res.json().catch(() => ({}));
+      setError(b.error ?? "Update failed.");
+      return;
+    }
+    setSelected(new Set());
+    router.refresh();
+  }
+
+  function toggle(id: string) {
+    setSelected((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  }
+
+  function toggleAll() {
+    setSelected((prev) =>
+      prev.size === entries.length ? new Set() : new Set(entries.map((e) => e.id)),
+    );
+  }
+
   const approved = entries.filter((e) => e.status === "approved");
 
   // one continuous table — the browser paginates it, filling each printed
@@ -65,13 +108,63 @@ export default function AdminTable({ entries }: { entries: AdminEntry[] }) {
     <>
       {/* -------- screen: full review table -------- */}
       <div className="screen-only">
+        {selected.size > 0 && (
+          <div className="bulk-bar no-print">
+            <span>
+              <b>{selected.size}</b> selected
+            </span>
+            {view === "active" ? (
+              <button
+                className="btn bad sm"
+                disabled={bulkBusy}
+                onClick={() => {
+                  if (
+                    window.confirm(
+                      `Clear ${selected.size} ${selected.size === 1 ? "entry" : "entries"} from this list? They'll still count toward each member's OD budget — restore them any time from Show: Cleared.`,
+                    )
+                  ) {
+                    setArchived(Array.from(selected), true);
+                  }
+                }}
+              >
+                Clear selected
+              </button>
+            ) : (
+              <button
+                className="btn ok sm"
+                disabled={bulkBusy}
+                onClick={() => setArchived(Array.from(selected), false)}
+              >
+                Restore selected
+              </button>
+            )}
+            <button
+              className="btn ghost sm"
+              disabled={bulkBusy}
+              onClick={() => setSelected(new Set())}
+            >
+              Cancel
+            </button>
+          </div>
+        )}
+
         {entries.length === 0 ? (
-          <p className="empty">No entries here yet.</p>
+          <p className="empty">
+            {view === "archived" ? "Nothing cleared here." : "No entries here yet."}
+          </p>
         ) : (
           <div className="card table-scroll">
             <table>
               <thead>
                 <tr>
+                  <th className="no-print">
+                    <input
+                      type="checkbox"
+                      checked={selected.size === entries.length}
+                      onChange={toggleAll}
+                      aria-label="Select all"
+                    />
+                  </th>
                   <th>Name</th>
                   <th>Reg No</th>
                   <th>Date</th>
@@ -85,6 +178,14 @@ export default function AdminTable({ entries }: { entries: AdminEntry[] }) {
               <tbody>
                 {entries.map((e) => (
                   <tr key={e.id}>
+                    <td className="no-print">
+                      <input
+                        type="checkbox"
+                        checked={selected.has(e.id)}
+                        onChange={() => toggle(e.id)}
+                        aria-label={`Select ${e.name}'s entry`}
+                      />
+                    </td>
                     <td className="nowrap">{e.name}</td>
                     <td className="mono nowrap">{e.reg_no}</td>
                     <td className="nowrap">{fmtDateShort(e.od_date)}</td>
@@ -96,40 +197,67 @@ export default function AdminTable({ entries }: { entries: AdminEntry[] }) {
                     </td>
                     <td className="no-print">
                       <div className="row-actions">
-                        {e.status !== "approved" && (
-                          <button
-                            className="btn ok sm"
-                            disabled={busy === e.id}
-                            onClick={() => review(e.id, "approved")}
-                          >
-                            Approve
-                          </button>
-                        )}
-                        {e.status !== "rejected" && (
-                          <button
-                            className="btn bad sm"
-                            disabled={busy === e.id}
-                            onClick={() => {
-                              if (
-                                window.confirm(
-                                  `Reject ${e.name}'s OD? It will be removed from this list.`,
-                                )
-                              ) {
-                                review(e.id, "rejected");
-                              }
-                            }}
-                          >
-                            Reject
-                          </button>
-                        )}
-                        {e.status !== "pending" && (
+                        {view === "archived" ? (
                           <button
                             className="btn ghost sm"
-                            disabled={busy === e.id}
-                            onClick={() => review(e.id, "pending")}
+                            disabled={bulkBusy}
+                            onClick={() => setArchived([e.id], false)}
                           >
-                            Undo
+                            Restore
                           </button>
+                        ) : (
+                          <>
+                            {e.status !== "approved" && (
+                              <button
+                                className="btn ok sm"
+                                disabled={busy === e.id}
+                                onClick={() => review(e.id, "approved")}
+                              >
+                                Approve
+                              </button>
+                            )}
+                            {e.status !== "rejected" && (
+                              <button
+                                className="btn bad sm"
+                                disabled={busy === e.id}
+                                onClick={() => {
+                                  if (
+                                    window.confirm(
+                                      `Reject ${e.name}'s OD? It will be removed from this list.`,
+                                    )
+                                  ) {
+                                    review(e.id, "rejected");
+                                  }
+                                }}
+                              >
+                                Reject
+                              </button>
+                            )}
+                            {e.status !== "pending" && (
+                              <button
+                                className="btn ghost sm"
+                                disabled={busy === e.id}
+                                onClick={() => review(e.id, "pending")}
+                              >
+                                Undo
+                              </button>
+                            )}
+                            <button
+                              className="btn ghost sm"
+                              disabled={bulkBusy}
+                              onClick={() => {
+                                if (
+                                  window.confirm(
+                                    `Clear ${e.name}'s entry from this list? It'll still count toward their OD budget — restore it any time from Show: Cleared.`,
+                                  )
+                                ) {
+                                  setArchived([e.id], true);
+                                }
+                              }}
+                            >
+                              Clear
+                            </button>
+                          </>
                         )}
                       </div>
                     </td>
@@ -140,7 +268,7 @@ export default function AdminTable({ entries }: { entries: AdminEntry[] }) {
           </div>
         )}
         {error && <p className="msg err">{error}</p>}
-        {approved.length === 0 && entries.length > 0 && (
+        {view === "active" && approved.length === 0 && entries.length > 0 && (
           <p className="msg muted no-print">
             Nothing approved yet — the printed form fills in only approved entries.
           </p>

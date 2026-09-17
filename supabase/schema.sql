@@ -41,11 +41,15 @@ create table public.od_entries (
   status      text not null default 'pending'
               check (status in ('pending', 'approved', 'rejected')),
   reviewed_at timestamptz,
-  created_at  timestamptz not null default now()
+  created_at  timestamptz not null default now(),
+  -- set when the admin "clears" a printed entry off the working list;
+  -- still counts toward the member's OD budget, restorable any time
+  archived_at timestamptz
 );
 
-create index od_entries_od_date_idx on public.od_entries (od_date);
-create index od_entries_reg_no_idx  on public.od_entries (reg_no);
+create index od_entries_od_date_idx     on public.od_entries (od_date);
+create index od_entries_reg_no_idx      on public.od_entries (reg_no);
+create index od_entries_archived_at_idx on public.od_entries (archived_at);
 
 -- Server-side access only. The app uses the Supabase SECRET key
 -- (bypasses RLS); the publishable key is fully denied (no policies).
