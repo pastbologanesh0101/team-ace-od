@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 
 export default function DayPicker({
@@ -16,6 +17,16 @@ export default function DayPicker({
   to: string;
 }) {
   const router = useRouter();
+
+  // Local, always-controlled copies of the two date fields. Typing only
+  // updates this local state; the URL (and therefore the actual filter)
+  // only changes on blur/Enter. This also works around native date inputs
+  // not reliably firing onChange until the field is fully committed —
+  // blur always fires, so it's the one thing we can depend on.
+  const [fromInput, setFromInput] = useState(from);
+  const [toInput, setToInput] = useState(to);
+  useEffect(() => setFromInput(from), [from]);
+  useEffect(() => setToInput(to), [to]);
 
   function go(next: {
     day?: string;
@@ -41,6 +52,11 @@ export default function DayPicker({
   function goRange(next: { from?: string; to?: string }) {
     go({ day: "all", ...next });
   }
+  function clearRange() {
+    setFromInput("");
+    setToInput("");
+    goRange({ from: "", to: "" });
+  }
 
   return (
     <div className="toolbar">
@@ -65,8 +81,12 @@ export default function DayPicker({
         <input
           id="from"
           type="date"
-          value={from}
-          onChange={(e) => goRange({ from: e.target.value })}
+          value={fromInput}
+          onChange={(e) => setFromInput(e.target.value)}
+          onBlur={() => goRange({ from: fromInput })}
+          onKeyDown={(e) => {
+            if (e.key === "Enter") (e.target as HTMLInputElement).blur();
+          }}
         />
       </div>
 
@@ -75,17 +95,17 @@ export default function DayPicker({
         <input
           id="to"
           type="date"
-          value={to}
-          onChange={(e) => goRange({ to: e.target.value })}
+          value={toInput}
+          onChange={(e) => setToInput(e.target.value)}
+          onBlur={() => goRange({ to: toInput })}
+          onKeyDown={(e) => {
+            if (e.key === "Enter") (e.target as HTMLInputElement).blur();
+          }}
         />
       </div>
 
       {(from || to) && (
-        <button
-          className="btn ghost sm"
-          type="button"
-          onClick={() => goRange({ from: "", to: "" })}
-        >
+        <button className="btn ghost sm" type="button" onClick={clearRange}>
           Clear range
         </button>
       )}
