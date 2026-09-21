@@ -26,11 +26,18 @@ function fmtDayOption(d: string) {
     year: "numeric",
   });
 }
+function fmtRangeBound(d: string) {
+  return new Date(d + "T00:00:00").toLocaleDateString("en-GB", {
+    day: "numeric",
+    month: "short",
+    year: "numeric",
+  });
+}
 
 export default async function AdminPage({
   searchParams,
 }: {
-  searchParams: Promise<{ day?: string; status?: string }>;
+  searchParams: Promise<{ day?: string; status?: string; from?: string; to?: string }>;
 }) {
   const session = await currentSession();
   if (!session) redirect("/");
@@ -39,6 +46,10 @@ export default async function AdminPage({
   const sp = await searchParams;
   const day = sp.day ?? "all"; // default: every day
   const statusFilter = sp.status ?? "all";
+  // A specific day and a date range are mutually exclusive — picking one
+  // clears the other (see DayPicker's goDay/goRange).
+  const from = day === "all" ? sp.from ?? "" : "";
+  const to = day === "all" ? sp.to ?? "" : "";
 
   const db = createAdminClient();
 
@@ -63,7 +74,12 @@ export default async function AdminPage({
     .order("od_date", { ascending: true })
     .order("name", { ascending: true });
 
-  if (day !== "all") query = query.eq("od_date", day);
+  if (day !== "all") {
+    query = query.eq("od_date", day);
+  } else {
+    if (from) query = query.gte("od_date", from);
+    if (to) query = query.lte("od_date", to);
+  }
   if (statusFilter === "pending" || statusFilter === "approved") {
     query = query.eq("status", statusFilter);
   }
@@ -113,7 +129,12 @@ export default async function AdminPage({
     approved: entries.filter((e) => e.status === "approved").length,
   };
 
-  const heading = day === "all" ? "All OD entries" : fmtFullDate(day);
+  const heading =
+    day !== "all"
+      ? fmtFullDate(day)
+      : from || to
+        ? `${from ? fmtRangeBound(from) : "…"} – ${to ? fmtRangeBound(to) : "…"}`
+        : "All OD entries";
   const elsewhere =
     day !== "all" && statusFilter === "all" && (grandTotal ?? 0) > counts.total
       ? (grandTotal ?? 0) - counts.total
@@ -147,7 +168,7 @@ export default async function AdminPage({
       </p>
 
       <div className="no-print">
-        <DayPicker days={days} current={day} status={statusFilter} />
+        <DayPicker days={days} current={day} status={statusFilter} from={from} to={to} />
         {elsewhere > 0 && (
           <p className="msg muted">
             {elsewhere} more{" "}
