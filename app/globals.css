@@ -1,17 +1,19 @@
 :root {
-  --paper: #17150f;
-  --paper-2: #1d1a12;
-  --ink: #ece4d3;
-  --ink-soft: #a79c85;
-  --ink-faint: #6a6252;
-  --rule: rgba(236, 228, 211, 0.13);
-  --rule-strong: rgba(236, 228, 211, 0.24);
-  --accent: #e2543c;
+  --paper: #030405;
+  --paper-2: #0a0e14;
+  --ink: #eaf1fa;
+  --ink-soft: #9fb0c3;
+  --ink-faint: #5c6b7c;
+  --rule: rgba(255, 255, 255, 0.08);
+  --rule-strong: rgba(255, 255, 255, 0.16);
+  --accent: #8cc2ff;
+  --accent-strong: #aed4ff;
+  --on-accent: #04121c;
 
-  --font-sans: ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI",
-    Roboto, Helvetica, Arial, sans-serif;
-  --font-display: "Iowan Old Style", Palatino, Georgia, serif;
-  --font-mono: ui-monospace, SFMono-Regular, Menlo, monospace;
+  /* --font-sans / --font-display / --font-mono come from the next/font
+     classes on <html> in layout.tsx, each already carrying its own
+     fallback chain — don't redeclare them here, it would just race the
+     real webfont for who wins the cascade. */
 }
 
 * {
@@ -41,15 +43,26 @@ body {
   text-rendering: optimizeLegibility;
 }
 
-/* faint paper grain */
+/* faint starfield */
 body::before {
   content: "";
   position: fixed;
   inset: 0;
   z-index: 0;
   pointer-events: none;
-  opacity: 0.04;
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='3'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  opacity: 0.55;
+  background-image: radial-gradient(1.6px 1.6px at 10% 18%, #fff, transparent),
+    radial-gradient(1.3px 1.3px at 32% 62%, #fff, transparent),
+    radial-gradient(1.8px 1.8px at 58% 12%, #fff, transparent),
+    radial-gradient(1.2px 1.2px at 74% 44%, #fff, transparent),
+    radial-gradient(1.5px 1.5px at 88% 76%, #fff, transparent),
+    radial-gradient(1.1px 1.1px at 18% 84%, #fff, transparent),
+    radial-gradient(1.4px 1.4px at 46% 92%, #fff, transparent),
+    radial-gradient(1.2px 1.2px at 66% 28%, #fff, transparent),
+    radial-gradient(1.6px 1.6px at 94% 34%, #fff, transparent),
+    radial-gradient(1px 1px at 4% 52%, #fff, transparent);
+  background-repeat: repeat;
+  background-size: 480px 480px;
 }
 
 /* hairline at the very top of the page */
@@ -114,10 +127,10 @@ body::after {
 h1 {
   font-family: var(--font-display);
   font-optical-sizing: auto;
-  font-weight: 500;
+  font-weight: 600;
   font-size: clamp(2rem, 5vw, 2.9rem);
   line-height: 1.08;
-  letter-spacing: -0.015em;
+  letter-spacing: -0.02em;
   margin-bottom: 10px;
 }
 
@@ -312,10 +325,10 @@ select {
 }
 .btn.primary {
   background: var(--accent);
-  color: #1a1109;
+  color: var(--on-accent);
 }
 .btn.primary:hover:not(:disabled) {
-  background: #ef6047;
+  background: var(--accent-strong);
 }
 .btn.ghost {
   border-color: var(--rule-strong);
@@ -325,11 +338,11 @@ select {
   border-color: var(--ink-soft);
 }
 .btn.ok {
-  border-color: rgba(226, 84, 60, 0.5);
+  border-color: rgba(140, 194, 255, 0.5);
   color: var(--accent);
 }
 .btn.ok:hover:not(:disabled) {
-  background: rgba(226, 84, 60, 0.1);
+  background: rgba(140, 194, 255, 0.12);
 }
 .btn.bad {
   border-color: var(--rule);

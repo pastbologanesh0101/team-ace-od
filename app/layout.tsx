@@ -1,14 +1,21 @@
 import type { Metadata, Viewport } from "next";
-import { Fraunces, IBM_Plex_Mono } from "next/font/google";
+import { Space_Grotesk, Inter, IBM_Plex_Mono } from "next/font/google";
 import "./globals.css";
 
-const display = Fraunces({
+const display = Space_Grotesk({
   subsets: ["latin"],
-  weight: ["400", "500", "600"],
-  style: ["normal", "italic"],
+  weight: ["500", "600", "700"],
   variable: "--font-display",
   display: "swap",
-  fallback: ["Iowan Old Style", "Palatino", "Georgia", "serif"],
+  fallback: ["Inter", "ui-sans-serif", "sans-serif"],
+});
+
+const sans = Inter({
+  subsets: ["latin"],
+  weight: ["400", "500", "600"],
+  variable: "--font-sans",
+  display: "swap",
+  fallback: ["ui-sans-serif", "-apple-system", "sans-serif"],
 });
 
 const mono = IBM_Plex_Mono({
@@ -28,7 +35,7 @@ export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
   maximumScale: 5,
-  themeColor: "#17150f",
+  themeColor: "#030405",
   colorScheme: "dark",
 };
 
@@ -38,7 +45,10 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="en" className={`${display.variable} ${mono.variable}`}>
+    <html
+      lang="en"
+      className={`${display.variable} ${sans.variable} ${mono.variable}`}
+    >
       <body>{children}</body>
     </html>
   );
