@@ -20,6 +20,13 @@ export type AdminEntry = {
 function fmtTime(t: string) {
   return t?.slice(0, 5) ?? t;
 }
+// "14:30:00" -> "2:30 PM" (used on the printed form)
+function fmtTime12(t: string) {
+  if (!t) return t;
+  const [h, m] = t.split(":").map(Number);
+  const suffix = h >= 12 ? "PM" : "AM";
+  return `${h % 12 || 12}:${String(m).padStart(2, "0")} ${suffix}`;
+}
 function fmtDateShort(d: string) {
   return new Date(d + "T00:00:00").toLocaleDateString("en-GB", {
     day: "numeric",
@@ -299,8 +306,8 @@ export default function AdminTable({ entries }: { entries: AdminEntry[] }) {
                   <td>{e?.name ?? ""}</td>
                   <td>{e?.reg_no ?? ""}</td>
                   <td>{e ? fmtDMY(e.od_date) : ""}</td>
-                  <td>{e ? fmtTime(e.from_time) : ""}</td>
-                  <td>{e ? fmtTime(e.to_time) : ""}</td>
+                  <td>{e ? fmtTime12(e.from_time) : ""}</td>
+                  <td>{e ? fmtTime12(e.to_time) : ""}</td>
                 </tr>
               ))}
             </tbody>
