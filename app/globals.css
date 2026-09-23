@@ -43,8 +43,8 @@ body {
   text-rendering: optimizeLegibility;
 }
 
-/* interactive space backdrop (components/SpaceBackground.tsx) */
-.space-bg {
+/* interactive night backdrop (components/SkyBackground.tsx) */
+.sky-bg {
   position: fixed;
   inset: 0;
   width: 100vw;
@@ -765,7 +765,7 @@ tr.over .budget-fill {
   }
   body::before,
   body::after,
-  .space-bg {
+  .sky-bg {
     display: none !important;
   }
   .no-print,

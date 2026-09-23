@@ -1,7 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import { Space_Grotesk, Inter, IBM_Plex_Mono } from "next/font/google";
 import "./globals.css";
-import SpaceBackground from "./components/SpaceBackground";
+import SkyBackground from "./components/SkyBackground";
 import HeadingDecoder from "./components/HeadingDecoder";
 
 const display = Space_Grotesk({
@@ -52,7 +52,7 @@ export default function RootLayout({
       className={`${display.variable} ${sans.variable} ${mono.variable}`}
     >
       <body>
-        <SpaceBackground />
+        <SkyBackground />
         <HeadingDecoder />
         {children}
       </body>
