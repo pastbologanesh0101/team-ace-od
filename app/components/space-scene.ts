@@ -6,6 +6,8 @@
 // the pointer (parallax), stars near the pointer light up and get joined
 // into little constellations, and a click/tap kicks in a short warp jump.
 
+import { createForest, type Forest } from "./forest";
+
 type Star = {
   x: number;
   y: number;
@@ -47,6 +49,7 @@ export function mountSpace(canvas: HTMLCanvasElement): () => void {
   const meteors: Meteor[] = [];
   let nebula: HTMLCanvasElement | null = null;
   let dust: HTMLCanvasElement | null = null;
+  let forest: Forest | null = null;
 
   // pointer, in px; target vs eased
   const pointer = { x: 0, y: 0, active: false };
@@ -137,6 +140,7 @@ export function mountSpace(canvas: HTMLCanvasElement): () => void {
       lastW = w;
     }
     buildNebula();
+    forest = createForest(w, h, dpr);
     if (!pointer.active) {
       pointer.x = glow.x = w / 2;
       pointer.y = glow.y = h / 2;
@@ -345,6 +349,7 @@ export function mountSpace(canvas: HTMLCanvasElement): () => void {
     }
 
     c.globalCompositeOperation = "source-over";
+    forest?.draw(c, t, dt, cam);
   }
 
   const onMove = (e: PointerEvent) => {
