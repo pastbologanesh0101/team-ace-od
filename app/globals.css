@@ -69,6 +69,7 @@ body::after {
 .wrap {
   position: relative;
   z-index: 1;
+  text-shadow: 0 1px 3px rgba(3, 4, 5, 0.9);
   max-width: 760px;
   margin: 0 auto;
   padding: 60px 24px 110px;
@@ -158,14 +159,10 @@ a:hover {
 /* ---------- panels ---------- */
 .card {
   position: relative;
-  background: rgba(10, 14, 20, 0.62);
+  background: none;
   border: 1px solid var(--rule);
   border-radius: 4px;
   padding: 26px;
-  -webkit-backdrop-filter: blur(10px);
-  backdrop-filter: blur(10px);
-  box-shadow: 0 0 0 1px rgba(140, 194, 255, 0.04),
-    0 18px 50px -20px rgba(0, 0, 0, 0.8);
 }
 .card + .card {
   margin-top: 18px;
@@ -173,11 +170,9 @@ a:hover {
 
 /* a table doesn't need a panel around it — it's the ledger itself */
 .card.table-scroll {
-  background: rgba(3, 4, 5, 0.55);
   border: 0;
   border-radius: 0;
   padding: 0;
-  box-shadow: none;
 }
 
 /* multi-step forms: a quiet lift-in, no sci-fi */
@@ -460,7 +455,6 @@ tbody tr:last-child td {
   gap: 14px;
   margin-bottom: 14px;
   padding: 12px 16px;
-  background: var(--paper-2);
   border: 1px solid var(--rule-strong);
   border-radius: 4px;
   font-family: var(--font-mono);
@@ -703,6 +697,7 @@ tr.over .budget-fill {
   .wrap {
     max-width: none;
     padding: 0;
+    text-shadow: none;
   }
   .card {
     border: none;
