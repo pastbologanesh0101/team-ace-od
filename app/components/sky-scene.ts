@@ -150,8 +150,9 @@ export function mountSky(
   let t = rand(0, 60000);
   let raf = 0;
   let running = false;
-  let typing = false; // keys going into a form field — freeze the scene
-  let typingTimer = 0;
+  // form field the searchlight drone is lighting up (see forest.setFocus)
+  let focusEl: HTMLElement | null = null;
+  let userActed = false; // ignore autofocus on load — wait for a real click/key
 
   function frame(now: number) {
     raf = requestAnimationFrame(frame);
@@ -186,7 +187,7 @@ export function mountSky(
   }
 
   function sync() {
-    const should = !reduced && !document.hidden && !typing;
+    const should = !reduced && !document.hidden;
     if (should && !running) {
       running = true;
       last = performance.now();
@@ -298,13 +299,22 @@ export function mountSky(
     }
 
     c.globalCompositeOperation = "source-over";
-    forest?.draw(c, t, dt, cam);
+    if (forest) {
+      const r = focusEl?.getBoundingClientRect();
+      forest.setFocus(
+        r && r.width > 0 && r.bottom > 0 && r.top < h
+          ? { x: r.left, y: r.top, w: r.width, h: r.height }
+          : null,
+      );
+      forest.draw(c, t, dt, cam);
+    }
     if (opts.calm) {
       // working pages: dim the scene and leave the HUD off
       c.fillStyle = "rgba(3,4,5,0.45)";
       c.fillRect(0, 0, w, h);
-      return;
     }
+    forest?.drawSpotlight(c); // after the dim, so it stays bright
+    if (opts.calm) return;
     if (forest && hud) {
       const wrap = document.querySelector(".wrap")?.getBoundingClientRect();
       hud.draw(
@@ -383,17 +393,23 @@ export function mountSky(
   const onVisibility = () => sync();
   const isField = (el: EventTarget | null) =>
     el instanceof HTMLElement &&
-    el.matches("input:not([type=button]):not([type=submit]), textarea, select");
-  // hold still while someone types into a form; resume shortly after
-  const onKeyDown = (e: KeyboardEvent) => {
-    if (!isField(e.target)) return;
-    typing = true;
-    sync();
-    clearTimeout(typingTimer);
-    typingTimer = window.setTimeout(() => {
-      typing = false;
-      sync();
-    }, 1200);
+    el.matches(
+      "input:not([type=button]):not([type=submit]):not([type=checkbox]):not([type=radio]), textarea, select",
+    );
+  // the searchlight drone locks on to whichever field you're working in
+  const onUserAct = (e: Event) => {
+    userActed = true;
+    if (isField(e.target)) focusEl = e.target as HTMLElement;
+  };
+  const onFocusIn = (e: FocusEvent) => {
+    if (userActed && isField(e.target)) focusEl = e.target as HTMLElement;
+  };
+  const onFocusOut = () => {
+    // focus may be moving straight to another field
+    setTimeout(() => {
+      const el = document.activeElement;
+      focusEl = userActed && isField(el) ? (el as HTMLElement) : null;
+    }, 0);
   };
 
   resize();
@@ -436,7 +452,10 @@ export function mountSky(
   window.addEventListener("pointerdown", onDown, { passive: true });
   document.documentElement.addEventListener("pointerleave", onLeave);
   document.addEventListener("visibilitychange", onVisibility);
-  document.addEventListener("keydown", onKeyDown, true);
+  document.addEventListener("keydown", onUserAct, true);
+  document.addEventListener("pointerdown", onUserAct, true);
+  document.addEventListener("focusin", onFocusIn);
+  document.addEventListener("focusout", onFocusOut);
   if (needsPermission) {
     window.addEventListener("touchend", askTilt, { passive: true });
   } else if (DOE) {
@@ -449,8 +468,10 @@ export function mountSky(
     cancelAnimationFrame(raf);
     battery?.removeEventListener("levelchange", onBattery);
     battery?.removeEventListener("chargingchange", onBattery);
-    clearTimeout(typingTimer);
-    document.removeEventListener("keydown", onKeyDown, true);
+    document.removeEventListener("keydown", onUserAct, true);
+    document.removeEventListener("pointerdown", onUserAct, true);
+    document.removeEventListener("focusin", onFocusIn);
+    document.removeEventListener("focusout", onFocusOut);
     window.removeEventListener("resize", resize);
     window.removeEventListener("pointermove", onMove);
     window.removeEventListener("pointerdown", onDown);

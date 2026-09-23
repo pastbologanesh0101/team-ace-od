@@ -23,6 +23,8 @@ type Drone = {
   searchlight: boolean;
   sx: number; // last drawn screen position (for the HUD)
   sy: number;
+  y: number; // current height (eases between patrol and a lock-on)
+  lock: number; // 0..1, how locked-on to a focused field it is
 };
 
 type Firefly = { x: number; y: number; phase: number; speed: number };
@@ -36,8 +38,15 @@ export type Target = {
   lines: string[];
 };
 
+/** A page element for the searchlight drone to light up, in screen px. */
+export type FocusRect = { x: number; y: number; w: number; h: number };
+
 export type Forest = {
   targets: () => Target[];
+  /** Point the searchlight drone at a form field (null = back to patrol). */
+  setFocus: (r: FocusRect | null) => void;
+  /** The locked-on beam + pool; drawn last so it stays bright when dimmed. */
+  drawSpotlight: (c: CanvasRenderingContext2D) => void;
   draw: (
     c: CanvasRenderingContext2D,
     t: number,
@@ -206,6 +215,8 @@ export function createForest(
       searchlight: true,
       sx: 0,
       sy: 0,
+      y: 0,
+      lock: 0,
     },
     {
       x: rand(0, w),
@@ -216,8 +227,13 @@ export function createForest(
       searchlight: false,
       sx: 0,
       sy: 0,
+      y: 0,
+      lock: 0,
     },
   ];
+
+  for (const d of drones) d.y = d.baseY;
+  let focus: FocusRect | null = null;
 
   const fireflies: Firefly[] = Array.from(
     { length: Math.round(Math.min(lite ? 14 : 40, w / 30)) },
@@ -299,25 +315,43 @@ export function createForest(
   }
 
   function drawDrone(c: CanvasRenderingContext2D, d: Drone, t: number, dt: number) {
-    d.x += d.vx * dt;
-    const margin = 120 * d.scale;
-    if (d.vx > 0 && d.x > w + margin) d.x = -margin;
-    if (d.vx < 0 && d.x < -margin) d.x = w + margin;
+    const bob = Math.sin(t / 1400 + d.phase) * 14 * d.scale;
+    const tgt = d.searchlight ? focus : null;
+    let lean = Math.sign(d.vx) * 0.08;
+    if (tgt) {
+      // fly over and hover a little above the focused field
+      const tx = tgt.x + tgt.w / 2 + Math.sin(t / 1300) * 18;
+      const ty = Math.max(48, Math.min(h * 0.6, tgt.y - 170));
+      const k = 1 - Math.pow(0.03, dt / 1000);
+      lean = Math.max(-0.25, Math.min(0.25, (tx - d.x) * 0.004));
+      d.x += (tx - d.x) * k;
+      d.y += (ty - d.y) * k;
+      d.lock = Math.min(1, d.lock + dt / 700);
+    } else {
+      d.x += d.vx * dt;
+      const margin = 120 * d.scale;
+      if (d.vx > 0 && d.x > w + margin) d.x = -margin;
+      if (d.vx < 0 && d.x < -margin) d.x = w + margin;
+      d.y += (d.baseY - d.y) * (1 - Math.pow(0.1, dt / 1000));
+      d.lock = Math.max(0, d.lock - dt / 400);
+    }
     const x = d.x;
-    const y = d.baseY + Math.sin(t / 1400 + d.phase) * 14 * d.scale;
+    const y = d.y + bob * (1 - d.lock * 0.7);
     d.sx = x;
     d.sy = y;
     const s = d.scale;
-    const tiltA = Math.sign(d.vx) * 0.08 + Math.sin(t / 900 + d.phase) * 0.03;
+    const tiltA = lean + Math.sin(t / 900 + d.phase) * 0.03;
 
-    // searchlight sweeping the treetops
-    if (d.searchlight) {
+    // searchlight sweeping the treetops (fades out while locked on a field)
+    if (d.searchlight && d.lock < 0.99) {
       const sweep = Math.sin(t / 2600 + d.phase) * 0.45;
       const len = h - y;
       const spread = len * 0.22;
       const ex = x + Math.tan(sweep) * len;
       c.save();
       c.globalCompositeOperation = "lighter";
+      const fade = 1 - d.lock;
+      c.globalAlpha = fade;
       const g = c.createLinearGradient(x, y, ex, h);
       g.addColorStop(0, "rgba(190,220,255,0.10)");
       g.addColorStop(0.6, "rgba(190,220,255,0.05)");
@@ -582,7 +616,52 @@ export function createForest(
     c.restore();
   }
 
+  function drawSpotlight(c: CanvasRenderingContext2D) {
+    const d = drones[0];
+    if (!focus || d.lock < 0.01) return;
+    const a = d.lock;
+    const s = d.scale;
+    const cx = focus.x + focus.w / 2;
+    const cy = focus.y + focus.h / 2;
+    const rx = focus.w / 2 + 26;
+    const ry = focus.h / 2 + 18;
+    const ox = d.sx;
+    const oy = d.sy + 6 * s;
+
+    c.save();
+    c.globalCompositeOperation = "lighter";
+    // cone: narrow at the drone, as wide as the field where it lands
+    const beam = c.createLinearGradient(ox, oy, cx, cy);
+    beam.addColorStop(0, `rgba(200,225,255,${0.2 * a})`);
+    beam.addColorStop(0.75, `rgba(200,225,255,${0.07 * a})`);
+    beam.addColorStop(1, "rgba(200,225,255,0)"); // hand over to the pool
+    c.fillStyle = beam;
+    c.beginPath();
+    c.moveTo(ox - 3 * s, oy);
+    c.lineTo(ox + 3 * s, oy);
+    c.lineTo(cx + rx, cy);
+    c.lineTo(cx - rx, cy);
+    c.closePath();
+    c.fill();
+    // pool of light on the field itself
+    c.translate(cx, cy);
+    c.scale(1, ry / rx);
+    const pool = c.createRadialGradient(0, 0, 0, 0, 0, rx * 1.15);
+    pool.addColorStop(0, `rgba(200,225,255,${0.24 * a})`);
+    pool.addColorStop(0.6, `rgba(170,205,255,${0.12 * a})`);
+    pool.addColorStop(1, "rgba(170,205,255,0)");
+    c.fillStyle = pool;
+    c.beginPath();
+    c.arc(0, 0, rx * 1.15, 0, Math.PI * 2);
+    c.fill();
+    c.restore();
+  }
+
   return {
+    setFocus(r) {
+      focus = r;
+    },
+    drawSpotlight,
     targets() {
       const alt = (d: Drone) => Math.round(((h - d.sy) / h) * 140);
       const spd = (d: Drone) => (Math.abs(d.vx) * 400).toFixed(1);
@@ -591,7 +670,10 @@ export function createForest(
         x: d.sx,
         y: d.sy,
         size: 34 * d.scale,
-        lines: [`UAV-0${i + 1}`, `ALT ${alt(d)}M  SPD ${spd(d)}M/S`],
+        lines: [
+          `UAV-0${i + 1}`,
+          d.lock > 0.5 ? "LOCK ▸ INPUT" : `ALT ${alt(d)}M  SPD ${spd(d)}M/S`,
+        ],
       }));
       out.push({
         id: "ACE-R1",
