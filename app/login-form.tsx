@@ -13,6 +13,20 @@ export default function LoginForm() {
   const [passcode, setPasscode] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
+  const [paused, setPaused] = useState<{ title: string; text: string } | null>(
+    null,
+  );
+
+  // Server says member access is paused — show the popup instead of an error.
+  function checkPaused(body: {
+    paused?: boolean;
+    title?: string;
+    error?: string;
+  }) {
+    if (!body.paused) return false;
+    setPaused({ title: body.title ?? "Paused", text: body.error ?? "" });
+    return true;
+  }
 
   async function lookupReg(e: React.FormEvent) {
     e.preventDefault();
@@ -24,6 +38,7 @@ export default function LoginForm() {
     const body = await res.json().catch(() => ({}));
     setBusy(false);
     if (!res.ok) {
+      if (checkPaused(body)) return;
       setError(body.error ?? "Could not check that number.");
       return;
     }
@@ -44,6 +59,7 @@ export default function LoginForm() {
     const body = await res.json().catch(() => ({}));
     if (!res.ok) {
       setBusy(false);
+      if (checkPaused(body)) return;
       setError(body.error ?? "Could not sign in.");
       return;
     }
@@ -157,36 +173,65 @@ export default function LoginForm() {
     );
   }
 
+  const popup = paused && (
+    <div
+      className="modal-backdrop"
+      role="presentation"
+      onClick={() => setPaused(null)}
+    >
+      <div
+        className="modal"
+        role="alertdialog"
+        aria-modal="true"
+        aria-labelledby="paused-title"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <h2 id="paused-title">{paused.title}</h2>
+        <p>{paused.text}</p>
+        <button
+          className="btn primary"
+          autoFocus
+          onClick={() => setPaused(null)}
+        >
+          Got it
+        </button>
+      </div>
+    </div>
+  );
+
   // ---------- member: reg number ----------
   return (
-    <form className="card step" key="reg" onSubmit={lookupReg}>
-      <div className="field">
-        <label htmlFor="reg">Registration number</label>
-        <input
-          id="reg"
-          required
-          autoFocus
-          autoCapitalize="characters"
-          placeholder="25BCE1234"
-          value={reg}
-          onChange={(e) => setReg(e.target.value.toUpperCase())}
-        />
-      </div>
-      <button className="btn primary" type="submit" disabled={busy}>
-        {busy ? "Checking…" : "Continue"}
-      </button>
-      <button
-        type="button"
-        className="btn ghost sm"
-        style={{ marginLeft: 10 }}
-        onClick={() => {
-          setStep("admin");
-          setError("");
-        }}
-      >
-        Admin sign in
-      </button>
-      {error && <p className="msg err">{error}</p>}
-    </form>
+    <>
+      {popup}
+      <form className="card step" key="reg" onSubmit={lookupReg}>
+        <div className="field">
+          <label htmlFor="reg">Registration number</label>
+          <input
+            id="reg"
+            required
+            autoFocus
+            autoCapitalize="characters"
+            placeholder="25BCE1234"
+            value={reg}
+            onChange={(e) => setReg(e.target.value.toUpperCase())}
+          />
+        </div>
+        <button className="btn primary" type="submit" disabled={busy}>
+          {busy ? "Checking…" : "Continue"}
+        </button>
+        <button
+          type="button"
+          className="btn ghost sm"
+          style={{ marginLeft: 10 }}
+          onClick={() => {
+            setStep("admin");
+            setError("");
+          }}
+        >
+          Admin sign in
+        </button>
+        {error && <p className="msg err">{error}</p>}
+      </form>
+    </>
   );
 }

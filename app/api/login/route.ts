@@ -5,6 +5,8 @@ import {
   adminPasscode,
   COOKIE_OPTS,
   memberCookieValue,
+  membersPaused,
+  pausedResponse,
   SESSION_COOKIE,
 } from "@/lib/auth";
 import { memberByReg } from "@/lib/members";
@@ -36,6 +38,7 @@ export async function POST(request: Request) {
 
   // ---------- member ----------
   if (kind === "member") {
+    if (membersPaused()) return pausedResponse();
     const member = memberByReg(String(body.regNo ?? ""));
     if (!member) {
       return NextResponse.json(

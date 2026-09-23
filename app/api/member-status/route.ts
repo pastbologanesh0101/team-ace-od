@@ -1,9 +1,11 @@
 import { NextResponse } from "next/server";
+import { membersPaused, pausedResponse } from "@/lib/auth";
 import { memberByReg } from "@/lib/members";
 import { createAdminClient } from "@/lib/supabase/admin";
 
 /** Given a reg number: is it on the roster, and does it have a PIN yet? */
 export async function GET(request: Request) {
+  if (membersPaused()) return pausedResponse();
   const regNo = new URL(request.url).searchParams.get("regNo") ?? "";
   const member = memberByReg(regNo);
   if (!member) {

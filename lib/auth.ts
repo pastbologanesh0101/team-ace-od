@@ -11,6 +11,25 @@ export type Session =
 function secret(): string {
   return process.env.SESSION_SECRET ?? "";
 }
+/**
+ * Member access switch (Vercel env MEMBER_ACCESS_PAUSED=1). While on, members
+ * can't sign in and existing member sessions stop working; admin is unaffected.
+ */
+export function membersPaused(): boolean {
+  return (process.env.MEMBER_ACCESS_PAUSED ?? "").trim() === "1";
+}
+export const PAUSED_TITLE = "OD Tracker is paused until after CAT-II";
+export const PAUSED_MESSAGE =
+  "Member access is closed for now so everyone can focus on exam prep. " +
+  "It reopens after CAT-II — watch the team group for the announcement. " +
+  "Study well, all the best!";
+export function pausedResponse() {
+  return Response.json(
+    { error: PAUSED_MESSAGE, title: PAUSED_TITLE, paused: true },
+    { status: 423 },
+  );
+}
+
 export function adminPasscode(): string {
   return (process.env.ADMIN_PASSCODE ?? "").trim();
 }
@@ -60,6 +79,7 @@ export async function currentSession(): Promise<Session | null> {
   if (payload === "admin") return { role: "admin" };
 
   if (payload.startsWith("m:")) {
+    if (membersPaused()) return null;
     const regNo = payload.slice(2);
     const member = memberByReg(regNo);
     if (!member) return null; // removed from the roster since
