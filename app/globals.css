@@ -54,18 +54,6 @@ body {
   display: block;
 }
 
-/* hairline at the very top of the page */
-body::after {
-  content: "";
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  height: 2px;
-  background: var(--accent);
-  z-index: 3;
-}
-
 .wrap {
   position: relative;
   z-index: 1;
