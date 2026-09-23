@@ -1053,6 +1053,100 @@ html[data-flying] .wrap {
   justify-content: center;
 }
 
+/* ---------- drone game leaderboard ---------- */
+.lb {
+  width: min(340px, calc(100vw - 92px));
+  margin: 0 auto 20px;
+  text-align: left;
+}
+.lb-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 12px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid var(--rule-strong);
+  font-size: 0.66rem;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: var(--ink-faint);
+}
+.lb-record {
+  letter-spacing: 0.06em;
+  text-transform: none;
+  color: #f5c96b;
+  white-space: nowrap;
+}
+.lb-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  max-height: 34vh;
+  overflow-y: auto;
+}
+.lb-list li {
+  display: grid;
+  grid-template-columns: 1.6em 1fr auto;
+  gap: 10px;
+  padding: 6px 4px;
+  font-size: 0.86rem;
+  border-bottom: 1px solid var(--rule);
+  animation: liftIn 0.3s ease both;
+}
+.lb-list li:nth-child(2) { animation-delay: 0.03s; }
+.lb-list li:nth-child(3) { animation-delay: 0.06s; }
+.lb-list li:nth-child(n + 4) { animation-delay: 0.09s; }
+.lb-list li:nth-child(1) .lb-rank { color: #f5c96b; }
+.lb-list li:nth-child(2) .lb-rank { color: #cfd8e3; }
+.lb-list li:nth-child(3) .lb-rank { color: #d99a6c; }
+.lb-list li.me {
+  background: rgba(140, 194, 255, 0.1);
+  box-shadow: inset 2px 0 0 var(--accent);
+}
+.lb-rank {
+  color: var(--ink-faint);
+  font-variant-numeric: tabular-nums;
+}
+.lb-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--ink);
+}
+.lb-score {
+  font-family: var(--font-display);
+  font-variant-numeric: tabular-nums;
+  color: var(--accent);
+}
+.lb-empty,
+.lb-foot,
+.lb-err {
+  margin: 10px 0 0;
+  font-size: 0.76rem;
+  color: var(--ink-soft);
+}
+.lb-err {
+  color: #ff8a7a;
+}
+.lb-link {
+  background: none;
+  border: 0;
+  padding: 0;
+  color: var(--ink-faint);
+  font: inherit;
+  text-decoration: underline;
+  cursor: pointer;
+}
+.lb-join {
+  display: flex;
+  gap: 8px;
+  margin-top: 12px;
+}
+.lb-join input {
+  flex: 1;
+  min-width: 0;
+}
+
 /* ---------- print ---------- */
 .print-only {
   display: none;

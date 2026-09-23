@@ -4,6 +4,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { mountGame, type GameInput } from "./drone-game";
 import Joystick from "./Joystick";
+import Leaderboard from "./Leaderboard";
 
 const BEST_KEY = "ace-drone-best";
 
@@ -142,6 +143,7 @@ export default function DroneGame() {
                 <div className="game-over-sub">
                   {result.record ? "New best score!" : `Best ${result.best}`}
                 </div>
+                <Leaderboard key={run} score={result.score} />
                 <div className="game-over-actions">
                   <button
                     type="button"
