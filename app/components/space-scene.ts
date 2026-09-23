@@ -50,6 +50,9 @@ export function mountSpace(canvas: HTMLCanvasElement): () => void {
 
   // pointer, in px; target vs eased
   const pointer = { x: 0, y: 0, active: false };
+  // phone tilt, -1..1 on each axis, relative to a slowly-adapting "resting"
+  // pose so it works however the phone is being held
+  const tilt = { x: 0, y: 0, active: false, baseX: NaN, baseY: NaN };
   const cam = { x: 0, y: 0 }; // eased offset, -1..1
   const glow = { x: 0, y: 0 };
   let warp = 0; // 0..1 extra speed after a click
@@ -164,8 +167,16 @@ export function mountSpace(canvas: HTMLCanvasElement): () => void {
     t += dt;
 
     // ease camera + cursor glow toward the pointer
-    const tx = pointer.active ? (pointer.x / w) * 2 - 1 : Math.sin(t / 9000) * 0.25;
-    const ty = pointer.active ? (pointer.y / h) * 2 - 1 : Math.cos(t / 11000) * 0.2;
+    const tx = pointer.active
+      ? (pointer.x / w) * 2 - 1
+      : tilt.active
+        ? tilt.x
+        : Math.sin(t / 9000) * 0.25;
+    const ty = pointer.active
+      ? (pointer.y / h) * 2 - 1
+      : tilt.active
+        ? tilt.y
+        : Math.cos(t / 11000) * 0.2;
     const k = 1 - Math.pow(0.0025, dt / 1000);
     cam.x += (tx - cam.x) * k;
     cam.y += (ty - cam.y) * k;
@@ -337,6 +348,8 @@ export function mountSpace(canvas: HTMLCanvasElement): () => void {
   }
 
   const onMove = (e: PointerEvent) => {
+    // touch drags are scrolls, not steering — phones steer by tilt instead
+    if (e.pointerType === "touch") return;
     if (!pointer.active) {
       glow.x = e.clientX;
       glow.y = e.clientY;
@@ -348,6 +361,46 @@ export function mountSpace(canvas: HTMLCanvasElement): () => void {
   const onLeave = () => {
     pointer.active = false;
   };
+  const onTilt = (e: DeviceOrientationEvent) => {
+    if (e.beta == null || e.gamma == null) return;
+    // map to screen axes for the current orientation
+    const angle = screen.orientation?.angle ?? 0;
+    let x = e.gamma;
+    let y = e.beta;
+    if (angle === 90) [x, y] = [e.beta, -e.gamma];
+    else if (angle === 270 || angle === -90) [x, y] = [-e.beta, e.gamma];
+
+    if (Number.isNaN(tilt.baseX)) {
+      tilt.baseX = x;
+      tilt.baseY = y;
+    }
+    tilt.baseX += (x - tilt.baseX) * 0.005;
+    tilt.baseY += (y - tilt.baseY) * 0.005;
+    const clamp = (v: number) => Math.max(-1, Math.min(1, v));
+    tilt.x = clamp((x - tilt.baseX) / 25);
+    tilt.y = clamp((y - tilt.baseY) / 25);
+    tilt.active = true;
+  };
+  // iOS only hands out motion data after a permission prompt, which must be
+  // triggered from a tap — ask once, on the first touch anywhere.
+  type IOSOrientation = typeof DeviceOrientationEvent & {
+    requestPermission?: () => Promise<"granted" | "denied">;
+  };
+  const DOE = (window as { DeviceOrientationEvent?: IOSOrientation })
+    .DeviceOrientationEvent;
+  const needsPermission = typeof DOE?.requestPermission === "function";
+  let asked = false;
+  const askTilt = () => {
+    if (asked || !needsPermission) return;
+    asked = true;
+    window.removeEventListener("touchend", askTilt);
+    DOE!.requestPermission!()
+      .then((r) => {
+        if (r === "granted") window.addEventListener("deviceorientation", onTilt);
+      })
+      .catch(() => {});
+  };
+
   const onDown = (e: PointerEvent) => {
     // don't warp when the click is on a form control / button / link
     const el = e.target as HTMLElement | null;
@@ -376,6 +429,11 @@ export function mountSpace(canvas: HTMLCanvasElement): () => void {
   window.addEventListener("pointerdown", onDown, { passive: true });
   document.documentElement.addEventListener("pointerleave", onLeave);
   document.addEventListener("visibilitychange", onVisibility);
+  if (needsPermission) {
+    window.addEventListener("touchend", askTilt, { passive: true });
+  } else if (DOE) {
+    window.addEventListener("deviceorientation", onTilt);
+  }
   raf = requestAnimationFrame(frame);
 
   return () => {
@@ -385,5 +443,7 @@ export function mountSpace(canvas: HTMLCanvasElement): () => void {
     window.removeEventListener("pointerdown", onDown);
     document.documentElement.removeEventListener("pointerleave", onLeave);
     document.removeEventListener("visibilitychange", onVisibility);
+    window.removeEventListener("deviceorientation", onTilt);
+    window.removeEventListener("touchend", askTilt);
   };
 }

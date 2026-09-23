@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from "next";
 import { Space_Grotesk, Inter, IBM_Plex_Mono } from "next/font/google";
 import "./globals.css";
 import SpaceBackground from "./components/SpaceBackground";
+import HeadingDecoder from "./components/HeadingDecoder";
 
 const display = Space_Grotesk({
   subsets: ["latin"],
@@ -52,6 +53,7 @@ export default function RootLayout({
     >
       <body>
         <SpaceBackground />
+        <HeadingDecoder />
         {children}
       </body>
     </html>
