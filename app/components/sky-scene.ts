@@ -8,6 +8,7 @@
 // rippling out through the lights.
 
 import { createForest, type Forest } from "./forest";
+import { createHud, type Hud } from "./hud";
 
 type Ribbon = {
   base: number; // resting height, fraction of h
@@ -49,6 +50,7 @@ export function mountSky(canvas: HTMLCanvasElement): () => void {
   let h = 0;
   let dpr = 1;
   let forest: Forest | null = null;
+  let hud: Hud | null = null;
   const buf = document.createElement("canvas");
   const bctx = buf.getContext("2d")!;
 
@@ -100,6 +102,7 @@ export function mountSky(canvas: HTMLCanvasElement): () => void {
     buf.width = Math.ceil(w / RES);
     buf.height = Math.ceil(h / RES);
     forest = createForest(w, h, dpr);
+    hud = createHud(w, h);
     if (!pointer.active) {
       pointer.x = glow.x = w / 2;
       pointer.y = glow.y = h * 0.3;
@@ -241,6 +244,18 @@ export function mountSky(canvas: HTMLCanvasElement): () => void {
 
     c.globalCompositeOperation = "source-over";
     forest?.draw(c, t, dt, cam);
+    if (forest && hud) {
+      const wrap = document.querySelector(".wrap")?.getBoundingClientRect();
+      hud.draw(
+        c,
+        t,
+        forest.targets(),
+        { x: pointer.x, y: pointer.y, focus },
+        wrap
+          ? { left: wrap.left, right: wrap.right, top: wrap.top, bottom: wrap.bottom - 90 }
+          : null,
+      );
+    }
   }
 
   const onMove = (e: PointerEvent) => {

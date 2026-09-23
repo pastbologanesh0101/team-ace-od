@@ -21,11 +21,23 @@ type Drone = {
   scale: number;
   phase: number;
   searchlight: boolean;
+  sx: number; // last drawn screen position (for the HUD)
+  sy: number;
 };
 
 type Firefly = { x: number; y: number; phase: number; speed: number };
 
+/** Something the HUD can lock on to, in screen px. */
+export type Target = {
+  id: string;
+  x: number;
+  y: number;
+  size: number; // half-size of the lock box
+  lines: string[];
+};
+
 export type Forest = {
+  targets: () => Target[];
   draw: (
     c: CanvasRenderingContext2D,
     t: number,
@@ -173,6 +185,9 @@ export function createForest(w: number, h: number, dpr: number): Forest {
     size: 1.05 * unit,
     wheel: 0,
     pause: 0,
+    sx: 0, // last drawn screen position (for the HUD)
+    sy: 0,
+    lidar: 0, // ms since the last LiDAR pulse
   };
 
   // ---- drones ----
@@ -184,6 +199,8 @@ export function createForest(w: number, h: number, dpr: number): Forest {
       scale: 1.1 * unit,
       phase: rand(0, 6),
       searchlight: true,
+      sx: 0,
+      sy: 0,
     },
     {
       x: rand(0, w),
@@ -192,6 +209,8 @@ export function createForest(w: number, h: number, dpr: number): Forest {
       scale: 0.6 * unit,
       phase: rand(0, 6),
       searchlight: false,
+      sx: 0,
+      sy: 0,
     },
   ];
 
@@ -281,6 +300,8 @@ export function createForest(w: number, h: number, dpr: number): Forest {
     if (d.vx < 0 && d.x < -margin) d.x = w + margin;
     const x = d.x;
     const y = d.baseY + Math.sin(t / 1400 + d.phase) * 14 * d.scale;
+    d.sx = x;
+    d.sy = y;
     const s = d.scale;
     const tiltA = Math.sign(d.vx) * 0.08 + Math.sin(t / 900 + d.phase) * 0.03;
 
@@ -400,6 +421,22 @@ export function createForest(w: number, h: number, dpr: number): Forest {
     const back = mid.ground(R.x - R.dir * 26 * s);
     const front = mid.ground(R.x + R.dir * 26 * s);
     const gy = oy + (back + front) / 2;
+    R.sx = gx;
+    R.sy = gy - 32 * s;
+
+    // LiDAR: a ring pulsing out across the ground every few seconds
+    R.lidar += dt;
+    if (R.lidar > 3200) R.lidar = 0;
+    const lp = R.lidar / 3200;
+    c.save();
+    c.globalCompositeOperation = "lighter";
+    c.strokeStyle = `rgba(140,194,255,${0.35 * (1 - lp)})`;
+    c.lineWidth = 1;
+    c.setLineDash([3, 5]);
+    c.beginPath();
+    c.ellipse(gx, gy, 20 + lp * 260 * s, (20 + lp * 260 * s) * 0.14, 0, 0, Math.PI * 2);
+    c.stroke();
+    c.restore();
     const slope = Math.atan2(front - back, 52 * s) * R.dir;
 
     c.save();
@@ -541,6 +578,30 @@ export function createForest(w: number, h: number, dpr: number): Forest {
   }
 
   return {
+    targets() {
+      const alt = (d: Drone) => Math.round(((h - d.sy) / h) * 140);
+      const spd = (d: Drone) => (Math.abs(d.vx) * 400).toFixed(1);
+      const out: Target[] = drones.map((d, i) => ({
+        id: `UAV-0${i + 1}`,
+        x: d.sx,
+        y: d.sy,
+        size: 34 * d.scale,
+        lines: [`UAV-0${i + 1}`, `ALT ${alt(d)}M  SPD ${spd(d)}M/S`],
+      }));
+      out.push({
+        id: "ACE-R1",
+        x: rover.sx,
+        y: rover.sy,
+        size: 46 * rover.size,
+        lines: [
+          "ACE-R1 · UGV",
+          rover.pause > 0
+            ? "SCANNING ▸ LIDAR"
+            : `HDG ${rover.dir > 0 ? "090" : "270"}  SPD 0.4M/S`,
+        ],
+      });
+      return out;
+    },
     // back to front: moon, far ridge, distant drone, mid forest + rover,
     // near drone (its searchlight falls behind the front trees), front trees
     draw(c, t, dt, cam) {
