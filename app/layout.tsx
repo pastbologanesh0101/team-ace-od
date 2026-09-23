@@ -3,6 +3,7 @@ import { Space_Grotesk, Inter, IBM_Plex_Mono } from "next/font/google";
 import "./globals.css";
 import SkyBackground from "./components/SkyBackground";
 import HeadingDecoder from "./components/HeadingDecoder";
+import AceMark from "./components/AceMark";
 
 const display = Space_Grotesk({
   subsets: ["latin"],
@@ -41,6 +42,10 @@ export const viewport: Viewport = {
   colorScheme: "dark",
 };
 
+// Runs before first paint: play the ACE intro once per browser session
+// (and never under reduced motion). See AceMark.tsx.
+const introScript = `try{if(!sessionStorage.getItem("aceIntro")&&!matchMedia("(prefers-reduced-motion: reduce)").matches){document.documentElement.setAttribute("data-ace-intro","");sessionStorage.setItem("aceIntro","1")}}catch(e){}`;
+
 export default function RootLayout({
   children,
 }: {
@@ -50,9 +55,14 @@ export default function RootLayout({
     <html
       lang="en"
       className={`${display.variable} ${sans.variable} ${mono.variable}`}
+      suppressHydrationWarning
     >
+      <head>
+        <script dangerouslySetInnerHTML={{ __html: introScript }} />
+      </head>
       <body>
         <SkyBackground />
+        <AceMark />
         <HeadingDecoder />
         {children}
       </body>

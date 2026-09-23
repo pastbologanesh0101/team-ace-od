@@ -135,7 +135,6 @@ export function createHud(w: number, h: number): Hud {
 
     c.fillStyle = `rgba(${ACCENT},0.55)`;
     c.textAlign = "left";
-    c.fillText("TEAM ACE // GROUND CONTROL", m + 10, m + 12);
     c.fillText("12.9692°N  79.1559°E  ·  VIT VELLORE", m + 10, h - m - 12);
 
     c.textAlign = "right";
