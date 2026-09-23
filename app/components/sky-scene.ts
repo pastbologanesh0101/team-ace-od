@@ -24,7 +24,6 @@ type Ribbon = {
   parallax: number;
 };
 
-const RES = 3; // aurora buffer is 1/RES of the viewport
 const COL = 1; // strip width in buffer px
 
 function makeStrip(stops: [number, string][]): HTMLCanvasElement {
@@ -39,9 +38,45 @@ function makeStrip(stops: [number, string][]): HTMLCanvasElement {
   return c;
 }
 
-export function mountSky(canvas: HTMLCanvasElement): () => void {
+export type SkyOptions = {
+  // quieter scene for working pages (dashboard / admin): no HUD, dimmed,
+  // 30 fps
+  calm: boolean;
+};
+
+export type Sky = {
+  setOptions: (o: Partial<SkyOptions>) => void;
+  dispose: () => void;
+};
+
+/**
+ * "Lite" rendering for phones and weaker/low-power devices: 30 fps, lower
+ * canvas resolution, cheaper aurora, fewer fireflies.
+ */
+function detectLite(): boolean {
+  const nav = navigator as Navigator & {
+    connection?: { saveData?: boolean };
+    deviceMemory?: number;
+  };
+  return (
+    matchMedia("(pointer: coarse)").matches ||
+    (nav.hardwareConcurrency ?? 8) <= 4 ||
+    (nav.deviceMemory ?? 8) <= 4 ||
+    !!nav.connection?.saveData
+  );
+}
+
+export function mountSky(
+  canvas: HTMLCanvasElement,
+  initial: SkyOptions,
+): Sky {
   const ctx = canvas.getContext("2d");
-  if (!ctx) return () => {};
+  if (!ctx) return { setOptions: () => {}, dispose: () => {} };
+  const opts: SkyOptions = { ...initial };
+  const baseLite = detectLite();
+  let lowBattery = false;
+  const lite = () => baseLite || lowBattery;
+  let RES = 3; // aurora buffer is 1/RES of the viewport
 
   const reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
   const rand = (a: number, b: number) => a + Math.random() * (b - a);
@@ -93,7 +128,8 @@ export function mountSky(canvas: HTMLCanvasElement): () => void {
   const surge = { x: 0, age: Infinity }; // click ripple
 
   function resize() {
-    dpr = Math.min(window.devicePixelRatio || 1, 2);
+    dpr = Math.min(window.devicePixelRatio || 1, lite() ? 1.25 : 2);
+    RES = lite() ? 4 : 3;
     w = window.innerWidth;
     h = window.innerHeight;
     canvas.width = Math.round(w * dpr);
@@ -101,19 +137,27 @@ export function mountSky(canvas: HTMLCanvasElement): () => void {
     ctx!.setTransform(dpr, 0, 0, dpr, 0, 0);
     buf.width = Math.ceil(w / RES);
     buf.height = Math.ceil(h / RES);
-    forest = createForest(w, h, dpr);
+    forest = createForest(w, h, dpr, lite());
     hud = createHud(w, h);
     if (!pointer.active) {
       pointer.x = glow.x = w / 2;
       pointer.y = glow.y = h * 0.3;
     }
+    if (!running) draw(0); // keep a correct still frame while paused
   }
 
   let last = performance.now();
   let t = rand(0, 60000);
   let raf = 0;
+  let running = false;
+  let typing = false; // keys going into a form field — freeze the scene
+  let typingTimer = 0;
 
   function frame(now: number) {
+    raf = requestAnimationFrame(frame);
+    // 30 fps is plenty for a backdrop on phones / working pages
+    const minGap = lite() || opts.calm ? 32 : 0;
+    if (now - last < minGap) return;
     const dt = Math.min(50, now - last);
     last = now;
     t += dt;
@@ -139,7 +183,18 @@ export function mountSky(canvas: HTMLCanvasElement): () => void {
     surge.age += dt;
 
     draw(dt);
-    raf = requestAnimationFrame(frame);
+  }
+
+  function sync() {
+    const should = !reduced && !document.hidden && !typing;
+    if (should && !running) {
+      running = true;
+      last = performance.now();
+      raf = requestAnimationFrame(frame);
+    } else if (!should && running) {
+      running = false;
+      cancelAnimationFrame(raf);
+    }
   }
 
   function drawAurora() {
@@ -244,6 +299,12 @@ export function mountSky(canvas: HTMLCanvasElement): () => void {
 
     c.globalCompositeOperation = "source-over";
     forest?.draw(c, t, dt, cam);
+    if (opts.calm) {
+      // working pages: dim the scene and leave the HUD off
+      c.fillStyle = "rgba(3,4,5,0.45)";
+      c.fillRect(0, 0, w, h);
+      return;
+    }
     if (forest && hud) {
       const wrap = document.querySelector(".wrap")?.getBoundingClientRect();
       hud.draw(
@@ -319,13 +380,20 @@ export function mountSky(canvas: HTMLCanvasElement): () => void {
     surge.x = e.clientX;
     surge.age = 0;
   };
-  const onVisibility = () => {
-    if (document.hidden) {
-      cancelAnimationFrame(raf);
-    } else if (!reduced) {
-      last = performance.now();
-      raf = requestAnimationFrame(frame);
-    }
+  const onVisibility = () => sync();
+  const isField = (el: EventTarget | null) =>
+    el instanceof HTMLElement &&
+    el.matches("input:not([type=button]):not([type=submit]), textarea, select");
+  // hold still while someone types into a form; resume shortly after
+  const onKeyDown = (e: KeyboardEvent) => {
+    if (!isField(e.target)) return;
+    typing = true;
+    sync();
+    clearTimeout(typingTimer);
+    typingTimer = window.setTimeout(() => {
+      typing = false;
+      sync();
+    }, 1200);
   };
 
   resize();
@@ -334,22 +402,55 @@ export function mountSky(canvas: HTMLCanvasElement): () => void {
   if (reduced) {
     // one still frame, no motion
     draw(0);
-    return () => window.removeEventListener("resize", resize);
+    return {
+      setOptions(o) {
+        Object.assign(opts, o);
+        draw(0);
+      },
+      dispose: () => window.removeEventListener("resize", resize),
+    };
   }
+
+  // low battery → lite mode (Chromium only; others just skip this)
+  type Battery = EventTarget & { level: number; charging: boolean };
+  let battery: Battery | null = null;
+  const onBattery = () => {
+    if (!battery) return;
+    const low = battery.level <= 0.2 && !battery.charging;
+    if (low !== lowBattery) {
+      lowBattery = low;
+      resize();
+    }
+  };
+  (navigator as Navigator & { getBattery?: () => Promise<Battery> })
+    .getBattery?.()
+    .then((b) => {
+      battery = b;
+      b.addEventListener("levelchange", onBattery);
+      b.addEventListener("chargingchange", onBattery);
+      onBattery();
+    })
+    .catch(() => {});
 
   window.addEventListener("pointermove", onMove, { passive: true });
   window.addEventListener("pointerdown", onDown, { passive: true });
   document.documentElement.addEventListener("pointerleave", onLeave);
   document.addEventListener("visibilitychange", onVisibility);
+  document.addEventListener("keydown", onKeyDown, true);
   if (needsPermission) {
     window.addEventListener("touchend", askTilt, { passive: true });
   } else if (DOE) {
     window.addEventListener("deviceorientation", onTilt);
   }
-  raf = requestAnimationFrame(frame);
+  sync();
 
-  return () => {
+  const dispose = () => {
+    running = false;
     cancelAnimationFrame(raf);
+    battery?.removeEventListener("levelchange", onBattery);
+    battery?.removeEventListener("chargingchange", onBattery);
+    clearTimeout(typingTimer);
+    document.removeEventListener("keydown", onKeyDown, true);
     window.removeEventListener("resize", resize);
     window.removeEventListener("pointermove", onMove);
     window.removeEventListener("pointerdown", onDown);
@@ -357,5 +458,13 @@ export function mountSky(canvas: HTMLCanvasElement): () => void {
     document.removeEventListener("visibilitychange", onVisibility);
     window.removeEventListener("deviceorientation", onTilt);
     window.removeEventListener("touchend", askTilt);
+  };
+
+  return {
+    setOptions(o) {
+      Object.assign(opts, o);
+      if (!running) draw(0);
+    },
+    dispose,
   };
 }

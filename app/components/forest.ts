@@ -133,7 +133,12 @@ function buildLayer(
   return { canvas: cv, top, width, height, parallax: opts.parallax, ground };
 }
 
-export function createForest(w: number, h: number, dpr: number): Forest {
+export function createForest(
+  w: number,
+  h: number,
+  dpr: number,
+  lite = false,
+): Forest {
   const unit = Math.max(0.55, Math.min(1.15, Math.min(w, h) / 850));
   const treeH = Math.min(h, 900) * unit;
 
@@ -215,7 +220,7 @@ export function createForest(w: number, h: number, dpr: number): Forest {
   ];
 
   const fireflies: Firefly[] = Array.from(
-    { length: Math.round(Math.min(40, w / 30)) },
+    { length: Math.round(Math.min(lite ? 14 : 40, w / 30)) },
     () => ({
       x: rand(0, w),
       y: rand(h * 0.72, h * 0.98),
