@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { mountGame, type GameInput } from "./drone-game";
+import Joystick from "./Joystick";
 
 const BEST_KEY = "ace-drone-best";
 
@@ -17,7 +18,7 @@ function readBest(): number {
 /**
  * "Fly the drone" button + full-screen mini-game (see drone-game.ts).
  * While flying, the page content fades back and the keyboard drives the
- * drone; Esc lands. Touch devices get an on-screen pad.
+ * drone; Esc lands. Touch devices get a thumb-stick + boost button.
  */
 export default function DroneGame() {
   const [mode, setMode] = useState<"idle" | "flying" | "done">("idle");
@@ -30,6 +31,8 @@ export default function DroneGame() {
     left: false,
     right: false,
     boost: false,
+    joyX: 0,
+    joyY: 0,
   });
 
   const land = useCallback(() => setMode("idle"), []);
@@ -74,7 +77,7 @@ export default function DroneGame() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [mode === "flying", run]);
 
-  const pad = (k: keyof GameInput) => ({
+  const pad = (k: "up" | "down" | "left" | "right" | "boost") => ({
     onPointerDown: (e: React.PointerEvent) => {
       e.preventDefault();
       input.current[k] = true;
@@ -114,20 +117,14 @@ export default function DroneGame() {
                 <button type="button" className="game-land" onClick={land}>
                   Land ✕
                 </button>
-                <div className="game-pad" aria-hidden="true">
-                  <button type="button" className="up" {...pad("up")}>
-                    ▲
-                  </button>
-                  <button type="button" className="left" {...pad("left")}>
-                    ◀
-                  </button>
-                  <button type="button" className="right" {...pad("right")}>
-                    ▶
-                  </button>
-                  <button type="button" className="down" {...pad("down")}>
-                    ▼
-                  </button>
-                  <button type="button" className="boost" {...pad("boost")}>
+                <div className="game-pad">
+                  <Joystick input={input.current} />
+                  <button
+                    type="button"
+                    className="boost"
+                    aria-hidden="true"
+                    {...pad("boost")}
+                  >
                     BOOST
                   </button>
                 </div>

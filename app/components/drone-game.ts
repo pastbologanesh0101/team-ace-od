@@ -9,6 +9,9 @@ export type GameInput = {
   left: boolean;
   right: boolean;
   boost: boolean;
+  // analog stick (touch joystick), -1..1 each axis; 0 when not in use
+  joyX: number;
+  joyY: number;
 };
 
 type Beacon = { x: number; y: number; gold: boolean; born: number };
@@ -78,8 +81,13 @@ export function mountGame(
 
   function update(dt: number) {
     const playing = t > COUNTDOWN && !ended;
-    const ax = playing ? (input.right ? 1 : 0) - (input.left ? 1 : 0) : 0;
-    const ay = playing ? (input.down ? 1 : 0) - (input.up ? 1 : 0) : 0;
+    const clamp = (v: number) => Math.max(-1, Math.min(1, v));
+    const ax = playing
+      ? clamp((input.right ? 1 : 0) - (input.left ? 1 : 0) + input.joyX)
+      : 0;
+    const ay = playing
+      ? clamp((input.down ? 1 : 0) - (input.up ? 1 : 0) + input.joyY)
+      : 0;
     const accel = 0.0016 * (input.boost ? 1.8 : 1) * scale;
     const max = 0.62 * (input.boost ? 1.6 : 1) * scale;
 
@@ -349,7 +357,7 @@ export function mountGame(
     }
   }
 
-  const KEYS: Record<string, keyof GameInput> = {
+  const KEYS: Record<string, "up" | "down" | "left" | "right" | "boost"> = {
     KeyW: "up",
     ArrowUp: "up",
     KeyS: "down",
@@ -387,6 +395,7 @@ export function mountGame(
     window.removeEventListener("keydown", onKey);
     window.removeEventListener("keyup", onKey);
     window.removeEventListener("resize", resize);
-    for (const k of Object.keys(input) as (keyof GameInput)[]) input[k] = false;
+    input.up = input.down = input.left = input.right = input.boost = false;
+    input.joyX = input.joyY = 0;
   };
 }
