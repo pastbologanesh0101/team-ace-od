@@ -66,11 +66,16 @@ export default function HeadingDecoder() {
       frames.add(requestAnimationFrame(tick));
     }
 
-    function scan(root: ParentNode) {
-      root.querySelectorAll(SELECTOR).forEach((el, i) => decode(el, i * 90));
+    function scan(root: ParentNode, base = 0) {
+      root
+        .querySelectorAll(SELECTOR)
+        .forEach((el, i) => decode(el, base + i * 90));
     }
 
-    scan(document);
+    // on a first visit the ACE intro covers the page for ~1.4s — decode
+    // as it lifts rather than behind it
+    const intro = document.documentElement.hasAttribute("data-ace-intro");
+    scan(document, intro ? 1400 : 0);
     const obs = new MutationObserver((muts) => {
       for (const m of muts) {
         m.addedNodes.forEach((n) => {

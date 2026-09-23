@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation";
 import { currentSession } from "@/lib/auth";
 import LoginForm from "./login-form";
+import DroneGame from "./components/DroneGame";
 
 export const dynamic = "force-dynamic";
 
@@ -24,6 +25,8 @@ export default async function Home() {
       </p>
 
       <LoginForm />
+
+      <DroneGame />
     </div>
   );
 }
