@@ -43,26 +43,15 @@ body {
   text-rendering: optimizeLegibility;
 }
 
-/* faint starfield */
-body::before {
-  content: "";
+/* interactive space backdrop (components/SpaceBackground.tsx) */
+.space-bg {
   position: fixed;
   inset: 0;
+  width: 100vw;
+  height: 100vh;
   z-index: 0;
   pointer-events: none;
-  opacity: 0.55;
-  background-image: radial-gradient(1.6px 1.6px at 10% 18%, #fff, transparent),
-    radial-gradient(1.3px 1.3px at 32% 62%, #fff, transparent),
-    radial-gradient(1.8px 1.8px at 58% 12%, #fff, transparent),
-    radial-gradient(1.2px 1.2px at 74% 44%, #fff, transparent),
-    radial-gradient(1.5px 1.5px at 88% 76%, #fff, transparent),
-    radial-gradient(1.1px 1.1px at 18% 84%, #fff, transparent),
-    radial-gradient(1.4px 1.4px at 46% 92%, #fff, transparent),
-    radial-gradient(1.2px 1.2px at 66% 28%, #fff, transparent),
-    radial-gradient(1.6px 1.6px at 94% 34%, #fff, transparent),
-    radial-gradient(1px 1px at 4% 52%, #fff, transparent);
-  background-repeat: repeat;
-  background-size: 480px 480px;
+  display: block;
 }
 
 /* hairline at the very top of the page */
@@ -169,10 +158,14 @@ a:hover {
 /* ---------- panels ---------- */
 .card {
   position: relative;
-  background: var(--paper-2);
+  background: rgba(10, 14, 20, 0.62);
   border: 1px solid var(--rule);
   border-radius: 4px;
   padding: 26px;
+  -webkit-backdrop-filter: blur(10px);
+  backdrop-filter: blur(10px);
+  box-shadow: 0 0 0 1px rgba(140, 194, 255, 0.04),
+    0 18px 50px -20px rgba(0, 0, 0, 0.8);
 }
 .card + .card {
   margin-top: 18px;
@@ -180,10 +173,11 @@ a:hover {
 
 /* a table doesn't need a panel around it — it's the ledger itself */
 .card.table-scroll {
-  background: none;
+  background: rgba(3, 4, 5, 0.55);
   border: 0;
   border-radius: 0;
   padding: 0;
+  box-shadow: none;
 }
 
 /* multi-step forms: a quiet lift-in, no sci-fi */
@@ -695,8 +689,9 @@ tr.over .budget-fill {
     print-color-adjust: exact;
   }
   body::before,
-  body::after {
-    display: none;
+  body::after,
+  .space-bg {
+    display: none !important;
   }
   .no-print,
   .screen-only {
