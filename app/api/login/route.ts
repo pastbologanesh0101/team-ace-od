@@ -4,6 +4,7 @@ import {
   adminCookieValue,
   adminPasscode,
   COOKIE_OPTS,
+  isViewOnlyMember,
   memberCookieValue,
   membersPaused,
   pausedResponse,
@@ -38,13 +39,15 @@ export async function POST(request: Request) {
 
   // ---------- member ----------
   if (kind === "member") {
-    if (membersPaused()) return pausedResponse();
     const member = memberByReg(String(body.regNo ?? ""));
     if (!member) {
       return NextResponse.json(
         { error: "That registration number isn't on the team roster." },
         { status: 401 },
       );
+    }
+    if (membersPaused() && !isViewOnlyMember(member.regNo)) {
+      return pausedResponse();
     }
     const pin = String(body.pin ?? "");
     if (!isValidPin(pin)) {

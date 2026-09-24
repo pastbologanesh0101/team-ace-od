@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { currentSession } from "@/lib/auth";
+import { currentSession, isViewOnlyMember } from "@/lib/auth";
 import { createAdminClient } from "@/lib/supabase/admin";
 import {
   BUDGET_DAYS,
@@ -51,6 +51,16 @@ export async function POST(request: Request) {
   const session = await currentSession();
   if (session?.role !== "member") {
     return NextResponse.json({ error: "Not signed in." }, { status: 401 });
+  }
+  if (isViewOnlyMember(session.regNo)) {
+    return NextResponse.json(
+      {
+        error:
+          "Your account is in view-only mode. You cannot submit new OD applications at this time. " +
+          "Contact the management head for assistance.",
+      },
+      { status: 423 },
+    );
   }
 
   let body: Record<string, unknown>;

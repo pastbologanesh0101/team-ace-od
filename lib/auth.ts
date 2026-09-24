@@ -18,6 +18,20 @@ function secret(): string {
 export function membersPaused(): boolean {
   return (process.env.MEMBER_ACCESS_PAUSED ?? "").trim() === "1";
 }
+
+/**
+ * Whitelist of members (reg numbers) who can access in view-only mode during pause.
+ * Vercel env MEMBER_VIEW_ONLY_WHITELIST=regNo1,regNo2,...
+ */
+export function getViewOnlyWhitelist(): Set<string> {
+  const list = (process.env.MEMBER_VIEW_ONLY_WHITELIST ?? "").trim();
+  if (!list) return new Set();
+  return new Set(list.split(",").map((r) => r.trim().toUpperCase()));
+}
+
+export function isViewOnlyMember(regNo: string): boolean {
+  return getViewOnlyWhitelist().has(regNo.toUpperCase());
+}
 export const PAUSED_TITLE = "OD Tracker is paused until after CAT-II";
 export const PAUSED_MESSAGE =
   "Member access is closed for now so everyone can focus on exam prep. " +
@@ -79,8 +93,8 @@ export async function currentSession(): Promise<Session | null> {
   if (payload === "admin") return { role: "admin" };
 
   if (payload.startsWith("m:")) {
-    if (membersPaused()) return null;
     const regNo = payload.slice(2);
+    if (membersPaused() && !isViewOnlyMember(regNo)) return null;
     const member = memberByReg(regNo);
     if (!member) return null; // removed from the roster since
     return { role: "member", regNo: member.regNo, name: member.name };
