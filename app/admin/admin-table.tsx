@@ -109,6 +109,23 @@ export default function AdminTable({ entries }: { entries: AdminEntry[] }) {
 
   const approved = entries.filter((e) => e.status === "approved");
 
+  function exportCSV() {
+    const rows = approved.map((e) => [e.name, e.reg_no, fmtDMY(e.od_date)]);
+    const csv = [
+      ["Name", "Reg Number", "Date"],
+      ...rows,
+    ]
+      .map((r) => r.map((v) => `"${String(v).replace(/"/g, '""')}"`).join(","))
+      .join("\r\n");
+    const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `team-ace-od-${new Date().toISOString().slice(0, 10)}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+  }
+
   // one continuous table — the browser paginates it, filling each printed
   // page with as many rows as fit (header row repeats via thead)
   const printRows: (AdminEntry | null)[] =
@@ -144,6 +161,14 @@ export default function AdminTable({ entries }: { entries: AdminEntry[] }) {
               onClick={() => setSelected(new Set())}
             >
               Cancel
+            </button>
+          </div>
+        )}
+
+        {approved.length > 0 && (
+          <div className="export-bar">
+            <button className="btn ghost sm" type="button" onClick={exportCSV}>
+              Export Excel (.csv)
             </button>
           </div>
         )}

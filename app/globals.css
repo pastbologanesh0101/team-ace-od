@@ -449,6 +449,12 @@ tbody tr:last-child td {
   margin-left: auto;
 }
 
+.export-bar {
+  display: flex;
+  justify-content: flex-end;
+  margin-bottom: 10px;
+}
+
 /* ---------- toolbar / counts ---------- */
 .toolbar {
   display: flex;

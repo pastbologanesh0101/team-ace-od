@@ -163,7 +163,8 @@ export default async function AdminPage({
       )}
       <p className="sub no-print">
         Approve or reject each entry, then use <b>Print / Save PDF</b> for the
-        list to submit. Once an entry is processed and printed, select it and{" "}
+        official form or <b>Export Excel (.csv)</b> for a plain spreadsheet.
+        Once an entry is processed, select it and{" "}
         <b>Delete</b> so it doesn&apos;t show up again next time.
       </p>
 
