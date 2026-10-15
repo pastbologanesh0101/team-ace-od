@@ -1212,15 +1212,25 @@ html[data-flying] .wrap {
     font-family: "Times New Roman", Times, serif;
     color: #000;
     line-height: 1.35;
-    display: flex;
-    flex-direction: column;
-    min-height: 100vh;
     padding: 14mm 12mm;
     box-sizing: border-box;
   }
-  .od-bottom {
-    margin-top: auto;
-    padding-top: 12mm;
+
+  /* When printing a small selection, anchor bottom sections to page foot */
+  .od-sheet-selected {
+    position: relative;
+    min-height: 100vh;
+  }
+  .od-sheet-selected .od-bottom {
+    position: absolute;
+    bottom: 14mm;
+    left: 12mm;
+    right: 12mm;
+  }
+
+  /* Normal (all-entries) print: just give breathing room above */
+  .od-sheet:not(.od-sheet-selected) .od-bottom {
+    margin-top: 16mm;
   }
 
   .od-head {

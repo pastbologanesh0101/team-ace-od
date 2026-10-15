@@ -317,7 +317,7 @@ export default function AdminTable({ entries }: { entries: AdminEntry[] }) {
 
       {/* -------- print: official Team ACE On-Duty form -------- */}
       <div className="print-only">
-        <section className="od-sheet">
+        <section className={`od-sheet${printMode === "selected" ? " od-sheet-selected" : ""}`}>
           <header className="od-head">
             <img className="od-vit" src="/vit-logo.png" alt="VIT" />
             <img className="od-ace" src="/ace-logo.png" alt="ACE" />
