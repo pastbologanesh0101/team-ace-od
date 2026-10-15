@@ -46,6 +46,7 @@ export default function AdminTable({ entries }: { entries: AdminEntry[] }) {
   const [bulkBusy, setBulkBusy] = useState(false);
   const [error, setError] = useState("");
   const [selected, setSelected] = useState<Set<string>>(new Set());
+  const [printMode, setPrintMode] = useState<"all" | "selected">("all");
 
   async function review(id: string, status: "approved" | "rejected" | "pending") {
     setBusy(id);
@@ -126,10 +127,16 @@ export default function AdminTable({ entries }: { entries: AdminEntry[] }) {
     URL.revokeObjectURL(url);
   }
 
+  const selectedApproved = entries.filter(
+    (e) => selected.has(e.id) && e.status === "approved",
+  );
+
   // one continuous table — the browser paginates it, filling each printed
   // page with as many rows as fit (header row repeats via thead)
+  const activePrintList =
+    printMode === "selected" ? selectedApproved : approved;
   const printRows: (AdminEntry | null)[] =
-    approved.length > 0 ? approved : Array(BLANK_ROWS).fill(null);
+    activePrintList.length > 0 ? activePrintList : Array(BLANK_ROWS).fill(null);
 
   return (
     <>
@@ -140,6 +147,21 @@ export default function AdminTable({ entries }: { entries: AdminEntry[] }) {
             <span>
               <b>{selected.size}</b> selected
             </span>
+            {selectedApproved.length > 0 && (
+              <button
+                className="btn ok sm"
+                disabled={bulkBusy}
+                onClick={() => {
+                  setPrintMode("selected");
+                  setTimeout(() => {
+                    window.print();
+                    setPrintMode("all");
+                  }, 60);
+                }}
+              >
+                Print selected
+              </button>
+            )}
             <button
               className="btn bad sm"
               disabled={bulkBusy}
