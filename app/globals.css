@@ -1160,7 +1160,7 @@ html[data-flying] .wrap {
 
 @page {
   size: A4 portrait;
-  margin: 14mm 12mm;
+  margin: 0;
 }
 
 @media print {
@@ -1212,6 +1212,15 @@ html[data-flying] .wrap {
     font-family: "Times New Roman", Times, serif;
     color: #000;
     line-height: 1.35;
+    display: flex;
+    flex-direction: column;
+    min-height: 100vh;
+    padding: 14mm 12mm;
+    box-sizing: border-box;
+  }
+  .od-bottom {
+    margin-top: auto;
+    padding-top: 12mm;
   }
 
   .od-head {

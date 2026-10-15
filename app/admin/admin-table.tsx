@@ -360,46 +360,48 @@ export default function AdminTable({ entries }: { entries: AdminEntry[] }) {
             </tbody>
           </table>
 
-          <h3 className="od-h">DUTY DETAILS</h3>
-          <table className="od-details">
-            <tbody>
-              {[
-                "EVENT DETAILS",
-                "EVENT AUTHORITY",
-                "EVENT NAME",
-                "EVENT VENUE",
-                "WORK DETAILS",
-                "SPECIAL INSTRUCTIONS",
-              ].map((label) => (
-                <tr key={label}>
-                  <td className="od-lbl">{label}</td>
-                  <td />
-                </tr>
-              ))}
-            </tbody>
-          </table>
+          <div className="od-bottom">
+            <h3 className="od-h">DUTY DETAILS</h3>
+            <table className="od-details">
+              <tbody>
+                {[
+                  "EVENT DETAILS",
+                  "EVENT AUTHORITY",
+                  "EVENT NAME",
+                  "EVENT VENUE",
+                  "WORK DETAILS",
+                  "SPECIAL INSTRUCTIONS",
+                ].map((label) => (
+                  <tr key={label}>
+                    <td className="od-lbl">{label}</td>
+                    <td />
+                  </tr>
+                ))}
+              </tbody>
+            </table>
 
-          <h3 className="od-h">AUTHORIZATION</h3>
-          <div className="od-sign">
-            <div>
-              <div className="od-sigline" />
-              <p>
-                <b>Team Captain</b>
-              </p>
-              <p>
-                <b>DATE:</b>
-                <span className="od-fill od-fill-sm" />
-              </p>
-            </div>
-            <div>
-              <div className="od-sigline" />
-              <p>
-                <b>Faculty Co-ordinator/ HOD(SCOPE)</b>
-              </p>
-              <p>
-                <b>DATE:</b>
-                <span className="od-fill od-fill-sm" />
-              </p>
+            <h3 className="od-h">AUTHORIZATION</h3>
+            <div className="od-sign">
+              <div>
+                <div className="od-sigline" />
+                <p>
+                  <b>Team Captain</b>
+                </p>
+                <p>
+                  <b>DATE:</b>
+                  <span className="od-fill od-fill-sm" />
+                </p>
+              </div>
+              <div>
+                <div className="od-sigline" />
+                <p>
+                  <b>Faculty Co-ordinator/ HOD(SCOPE)</b>
+                </p>
+                <p>
+                  <b>DATE:</b>
+                  <span className="od-fill od-fill-sm" />
+                </p>
+              </div>
             </div>
           </div>
         </section>
