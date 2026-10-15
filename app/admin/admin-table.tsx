@@ -135,8 +135,12 @@ export default function AdminTable({ entries }: { entries: AdminEntry[] }) {
   // page with as many rows as fit (header row repeats via thead)
   const activePrintList =
     printMode === "selected" ? selectedApproved : approved;
-  const printRows: (AdminEntry | null)[] =
-    activePrintList.length > 0 ? activePrintList : Array(BLANK_ROWS).fill(null);
+  const minRows = printMode === "selected" ? 5 : BLANK_ROWS;
+  const printRows: (AdminEntry | null)[] = (() => {
+    const base = activePrintList.length > 0 ? activePrintList : [];
+    const pad = Math.max(0, minRows - base.length);
+    return [...base, ...Array(pad).fill(null)];
+  })();
 
   return (
     <>
