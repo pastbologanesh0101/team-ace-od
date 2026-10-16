@@ -331,9 +331,11 @@ export default function AdminTable({ entries }: { entries: AdminEntry[] }) {
           <p className="od-subtitle">On Duty Record</p>
 
           <div className="od-refs">
-            <p>
-              REF NUMBER: <span className="od-fill" />
-            </p>
+            {printMode !== "selected" && (
+              <p>
+                REF NUMBER: <span className="od-fill" />
+              </p>
+            )}
             <p>
               SCHOOL: <span className="od-fill" />
             </p>
@@ -387,14 +389,29 @@ export default function AdminTable({ entries }: { entries: AdminEntry[] }) {
             <h3 className="od-h">AUTHORIZATION</h3>
             <div className="od-sign">
               <div>
-                <div className="od-sigline" />
-                <p>
-                  <b>Team Captain</b>
-                </p>
-                <p>
-                  <b>DATE:</b>
-                  <span className="od-fill od-fill-sm" />
-                </p>
+                {printMode === "selected" ? (
+                  <>
+                    <p className="od-captain-name">Azlaan Ali</p>
+                    <p>
+                      <b>Team Captain</b>
+                    </p>
+                    <p>
+                      <b>DATE:</b>
+                      <span className="od-fill od-fill-sm" />
+                    </p>
+                  </>
+                ) : (
+                  <>
+                    <div className="od-sigline" />
+                    <p>
+                      <b>Team Captain</b>
+                    </p>
+                    <p>
+                      <b>DATE:</b>
+                      <span className="od-fill od-fill-sm" />
+                    </p>
+                  </>
+                )}
               </div>
               <div>
                 <div className="od-sigline" />
