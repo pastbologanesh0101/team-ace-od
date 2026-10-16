@@ -396,8 +396,12 @@ export default function AdminTable({ entries }: { entries: AdminEntry[] }) {
                       <b>Team Captain</b>
                     </p>
                     <p>
-                      <b>DATE:</b>
-                      <span className="od-fill od-fill-sm" />
+                      <b>DATE:&nbsp;</b>
+                      {new Date().toLocaleDateString("en-GB", {
+                        day: "2-digit",
+                        month: "2-digit",
+                        year: "numeric",
+                      })}
                     </p>
                   </>
                 ) : (
