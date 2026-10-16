@@ -49,6 +49,7 @@ export default function AdminTable({ entries }: { entries: AdminEntry[] }) {
   const [printMode, setPrintMode] = useState<"all" | "selected">("all");
   const [showDutyModal, setShowDutyModal] = useState(false);
   const [dutyFields, setDutyFields] = useState({
+    school: "",
     eventDetails: "",
     eventAuthority: "",
     eventName: "",
@@ -152,6 +153,7 @@ export default function AdminTable({ entries }: { entries: AdminEntry[] }) {
   })();
 
   const DUTY_LABELS: [keyof typeof dutyFields, string][] = [
+    ["school", "SCHOOL"],
     ["eventDetails", "EVENT DETAILS"],
     ["eventAuthority", "EVENT AUTHORITY"],
     ["eventName", "EVENT NAME"],
@@ -399,7 +401,10 @@ export default function AdminTable({ entries }: { entries: AdminEntry[] }) {
               </p>
             )}
             <p>
-              SCHOOL: <span className="od-fill" />
+              SCHOOL:{" "}
+              {printMode === "selected" && dutyFields.school
+                ? <span style={{ fontWeight: 700 }}>{dutyFields.school}</span>
+                : <span className="od-fill" />}
             </p>
           </div>
 
