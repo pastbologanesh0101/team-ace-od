@@ -1392,3 +1392,48 @@ html[data-flying] .wrap {
   color: var(--ink-soft);
   line-height: 1.55;
 }
+.duty-modal {
+  max-width: 560px;
+}
+.modal-title {
+  font-size: 18px;
+  font-weight: 700;
+  margin: 0 0 4px;
+}
+.modal-sub {
+  font-size: 13px;
+  margin: 0 0 18px !important;
+}
+.duty-fields {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-bottom: 22px;
+}
+.duty-field label {
+  display: block;
+  font-size: 11px;
+  letter-spacing: 0.05em;
+  color: var(--ink-soft);
+  margin-bottom: 4px;
+  text-transform: uppercase;
+}
+.duty-field input {
+  width: 100%;
+  background: var(--surface);
+  border: 1px solid var(--rule-strong);
+  border-radius: 6px;
+  padding: 7px 10px;
+  color: var(--ink);
+  font-size: 14px;
+  box-sizing: border-box;
+}
+.duty-field input:focus {
+  outline: none;
+  border-color: var(--accent, #7eb8f7);
+}
+.modal-actions {
+  display: flex;
+  gap: 10px;
+  justify-content: flex-end;
+}

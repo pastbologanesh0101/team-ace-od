@@ -47,6 +47,15 @@ export default function AdminTable({ entries }: { entries: AdminEntry[] }) {
   const [error, setError] = useState("");
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [printMode, setPrintMode] = useState<"all" | "selected">("all");
+  const [showDutyModal, setShowDutyModal] = useState(false);
+  const [dutyFields, setDutyFields] = useState({
+    eventDetails: "",
+    eventAuthority: "",
+    eventName: "",
+    eventVenue: "",
+    workDetails: "",
+    specialInstructions: "",
+  });
 
   async function review(id: string, status: "approved" | "rejected" | "pending") {
     setBusy(id);
@@ -142,8 +151,67 @@ export default function AdminTable({ entries }: { entries: AdminEntry[] }) {
     return [...base, ...Array(pad).fill(null)];
   })();
 
+  const DUTY_LABELS: [keyof typeof dutyFields, string][] = [
+    ["eventDetails", "EVENT DETAILS"],
+    ["eventAuthority", "EVENT AUTHORITY"],
+    ["eventName", "EVENT NAME"],
+    ["eventVenue", "EVENT VENUE"],
+    ["workDetails", "WORK DETAILS"],
+    ["specialInstructions", "SPECIAL INSTRUCTIONS"],
+  ];
+
+  function triggerSelectedPrint() {
+    setPrintMode("selected");
+    setTimeout(() => {
+      window.print();
+      setPrintMode("all");
+    }, 60);
+  }
+
   return (
     <>
+      {/* -------- duty details modal -------- */}
+      {showDutyModal && (
+        <div className="modal-backdrop no-print">
+          <div className="modal duty-modal">
+            <h2 className="modal-title">Duty Details</h2>
+            <p className="modal-sub">Fill in before printing — these appear on the form.</p>
+            <div className="duty-fields">
+              {DUTY_LABELS.map(([key, label]) => (
+                <div className="duty-field" key={key}>
+                  <label>{label}</label>
+                  <input
+                    type="text"
+                    value={dutyFields[key]}
+                    onChange={(e) =>
+                      setDutyFields((prev) => ({ ...prev, [key]: e.target.value }))
+                    }
+                    placeholder="—"
+                  />
+                </div>
+              ))}
+            </div>
+            <div className="modal-actions">
+              <button
+                className="btn ok"
+                onClick={() => {
+                  setShowDutyModal(false);
+                  triggerSelectedPrint();
+                }}
+              >
+                Print
+              </button>
+              <button
+                className="btn ghost"
+                onClick={() => setShowDutyModal(false)}
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* -------- screen: full review table -------- */}
       <div className="screen-only">
         {selected.size > 0 && (
@@ -155,13 +223,7 @@ export default function AdminTable({ entries }: { entries: AdminEntry[] }) {
               <button
                 className="btn ok sm"
                 disabled={bulkBusy}
-                onClick={() => {
-                  setPrintMode("selected");
-                  setTimeout(() => {
-                    window.print();
-                    setPrintMode("all");
-                  }, 60);
-                }}
+                onClick={() => setShowDutyModal(true)}
               >
                 Print selected
               </button>
@@ -370,17 +432,10 @@ export default function AdminTable({ entries }: { entries: AdminEntry[] }) {
             <h3 className="od-h">DUTY DETAILS</h3>
             <table className="od-details">
               <tbody>
-                {[
-                  "EVENT DETAILS",
-                  "EVENT AUTHORITY",
-                  "EVENT NAME",
-                  "EVENT VENUE",
-                  "WORK DETAILS",
-                  "SPECIAL INSTRUCTIONS",
-                ].map((label) => (
-                  <tr key={label}>
+                {DUTY_LABELS.map(([key, label]) => (
+                  <tr key={key}>
                     <td className="od-lbl">{label}</td>
-                    <td />
+                    <td>{dutyFields[key]}</td>
                   </tr>
                 ))}
               </tbody>
